@@ -1,0 +1,27 @@
+{
+  "name": "live-react-islands",
+  "version": "0.1.0",
+  "private": true,
+  "description": "React Islands for Phoenix LiveView - embed React components in LiveView with bidirectional communication and SSR support",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/live_react_islands/live-react-islands.git"
+  },
+  "author": "David Czaplinski",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach -pt run build",
+    "test": "yarn workspaces foreach -pt run test",
+    "clean": "yarn workspaces foreach -pt run clean"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "packageManager": "yarn@3.6.0"
+}

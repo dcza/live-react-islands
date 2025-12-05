@@ -1,0 +1,21 @@
+{
+  "name": "basic-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Basic example demonstrating LiveReactIslands usage",
+  "scripts": {
+    "build": "esbuild app.js --bundle --outfile=../priv/static/assets/app.js --external:phoenix --external:phoenix_html --external:phoenix_live_view",
+    "watch": "esbuild app.js --bundle --outfile=../priv/static/assets/app.js --watch --external:phoenix --external:phoenix_html --external:phoenix_live_view"
+  },
+  "dependencies": {
+    "@live_react_islands/react": "workspace:*",
+    "phoenix": "^1.7.18",
+    "phoenix_html": "^4.1.1",
+    "phoenix_live_view": "^1.0.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
