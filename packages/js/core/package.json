@@ -1,7 +1,7 @@
 {
-  "name": "@live_react_islands/react",
+  "name": "@live-react-islands/core",
   "version": "0.1.0",
-  "description": "React integration for LiveReactIslands - Phoenix LiveView hook and utilities",
+  "description": "Core React integration for LiveReactIslands - Phoenix LiveView hook and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -27,8 +27,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/live_react_islands/live-react-islands.git",
-    "directory": "packages/react"
+    "url": "https://github.com/dcza/live-react-islands.git",
+    "directory": "packages/js/core"
   },
   "peerDependencies": {
     "phoenix": "^1.7.0 || ^1.8.0",

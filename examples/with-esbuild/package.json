@@ -1,14 +1,14 @@
 {
-  "name": "basic-demo",
+  "name": "with-esbuild",
   "version": "0.1.0",
   "private": true,
-  "description": "Basic example demonstrating LiveReactIslands usage",
+  "description": "Example Phoenix app using LiveReactIslands with esbuild bundler",
   "scripts": {
     "build": "esbuild app.js --bundle --outfile=../priv/static/assets/app.js --external:phoenix --external:phoenix_html --external:phoenix_live_view",
     "watch": "esbuild app.js --bundle --outfile=../priv/static/assets/app.js --watch --external:phoenix --external:phoenix_html --external:phoenix_live_view"
   },
   "dependencies": {
-    "@live_react_islands/react": "workspace:*",
+    "@live-react-islands/core": "workspace:*",
     "phoenix": "^1.7.18",
     "phoenix_html": "^4.1.1",
     "phoenix_live_view": "^1.0.1",

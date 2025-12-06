@@ -2,7 +2,7 @@ defmodule LiveReactIslands.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/live_react_islands/live-react-islands"
+  @source_url "https://github.com/dcza/live-react-islands"
 
   def project do
     [

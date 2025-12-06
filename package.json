@@ -5,23 +5,32 @@
   "description": "React Islands for Phoenix LiveView - embed React components in LiveView with bidirectional communication and SSR support",
   "repository": {
     "type": "git",
-    "url": "https://github.com/live_react_islands/live-react-islands.git"
+    "url": "https://github.com/dcza/live-react-islands.git"
   },
   "author": "David Czaplinski",
   "license": "MIT",
   "workspaces": [
-    "packages/*",
+    "packages/elixir/*",
+    "packages/js/*",
     "examples/*"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach -pt run build",
-    "test": "yarn workspaces foreach -pt run test",
-    "clean": "yarn workspaces foreach -pt run clean"
+    "build": "yarn build:js && yarn build:elixir",
+    "build:js": "yarn workspaces foreach -pt run build",
+    "build:elixir": "cd packages/elixir/live_react_islands && mix compile",
+    "test": "yarn test:js && yarn test:elixir",
+    "test:js": "yarn workspaces foreach -pt run test",
+    "test:elixir": "cd packages/elixir/live_react_islands && mix test",
+    "clean": "yarn clean:js && yarn clean:elixir",
+    "clean:js": "yarn workspaces foreach -pt run clean",
+    "clean:elixir": "cd packages/elixir/live_react_islands && mix clean",
+    "format": "yarn format:js && yarn format:elixir",
+    "format:js": "yarn workspaces foreach -pt run format",
+    "format:elixir": "cd packages/elixir/live_react_islands && mix format"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0",
     "yarn": ">=3.0.0"
   },
-  "packageManager": "yarn@3.6.0"
+  "packageManager": "yarn@4.2.2"
 }
