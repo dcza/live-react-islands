@@ -17,19 +17,27 @@
 LiveReactIslands provides a bridge between Phoenix LiveView (Elixir backend) and React (JavaScript frontend):
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Phoenix LiveView                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │ React Island │  │ React Island │  │ React Island │     │
-│  │  Component   │  │  Component   │  │  Component   │     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-│         ▲                  ▲                  ▲             │
-│         │ props/events     │                  │             │
-│         ▼                  ▼                  ▼             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │           Single React Root (Portals)               │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                      Phoenix LiveView                          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
+│  │ LiveComponent    │  │ LiveComponent    │  │ LiveComponent│  │
+│  │ (Counter)        │  │ (TodoList)       │  │ (MyIsland)   │  │
+│  └────────┬─────────┘  └────────┬─────────┘  └──────┬───────┘  │
+│           │ props ↓             │                   │          │
+│           │ events ↑            │                   │          │
+└───────────┼─────────────────────┼───────────────────┼──────────┘
+            │                     │                   │
+            ▼                     ▼                   ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │              LiveView Hook (JavaScript)                     │
+  │  ┌──────────────────────────────────────────────────────┐   │
+  │  │          Single React Root (createRoot)              │   │
+  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │   │
+  │  │  │   Portal    │  │   Portal    │  │   Portal    │   │   │
+  │  │  │  <Counter>  │  │  <TodoList> │  │  <MyIsland> │   │   │
+  │  │  └─────────────┘  └─────────────┘  └─────────────┘   │   │
+  │  └──────────────────────────────────────────────────────┘   │
+  └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Packages
@@ -37,14 +45,16 @@ LiveReactIslands provides a bridge between Phoenix LiveView (Elixir backend) and
 This monorepo contains:
 
 - **`live_react_islands`** (Elixir) - Phoenix LiveView integration
-- **`@live_react_islands/react`** (JavaScript/TypeScript) - React hooks and utilities
-- **`examples/basic-demo`** - Basic usage example
+- **`@live-react-islands/core`** (JavaScript/TypeScript) - React hooks and utilities
+- **`examples/with-esbuild`** - Example using esbuild bundler
+- **`examples/with-vite`** - Example using Vite bundler
 
 ## Quick Start
 
 ### Installation
 
 **Elixir (mix.exs):**
+
 ```elixir
 def deps do
   [
@@ -54,15 +64,17 @@ end
 ```
 
 **JavaScript:**
+
 ```bash
-npm install @live_react_islands/react react react-dom
+npm install @live-react-islands/core react react-dom
 # or
-yarn add @live_react_islands/react react react-dom
+yarn add @live-react-islands/core react react-dom
 ```
 
 ### Configuration
 
 **config/config.exs:**
+
 ```elixir
 config :your_app, LiveReactIslands,
   main_module_path: "priv/static/assets/ssr.js"
@@ -94,9 +106,7 @@ export default function Counter({ count, pushEvent }) {
   return (
     <div>
       <h2>Count: {count}</h2>
-      <button onClick={() => pushEvent("increment", {})}>
-        Increment
-      </button>
+      <button onClick={() => pushEvent("increment", {})}>Increment</button>
     </div>
   );
 }
@@ -110,7 +120,7 @@ defmodule MyAppWeb.PageLive do
 
   def render(assigns) do
     ~H"""
-    <.live_component module={MyAppWeb.Components.CounterIsland} id="counter" count={@count} />
+    <.live_component module={MyAppWeb.Components.CounterIsland} id="counter" />
     """
   end
 end
@@ -120,10 +130,10 @@ end
 
 ### Prop Ownership
 
-LiveReactIslands tracks which side "owns" each prop:
+LiveReactIslands tracks which component "owns" each prop:
 
-- **Internal Owned** (LiveView → React): LiveView is the source of truth
-- **External Owned** (React → LiveView): React controls the value, LiveView receives updates
+- **Internal Owned**: LiveComponent manages the prop (LiveComponent → React)
+- **External Owned**: LiveView manages the prop, passed down through LiveComponent (LiveView → LiveComponent → React)
 
 ### Event Communication
 
@@ -151,7 +161,9 @@ use LiveReactIslands.Component,
 
 ### Global State
 
-Share state across islands using the Globals macro:
+Share state across islands by providing a global store handler when creating the hook.
+
+**Elixir (LiveView):**
 
 ```elixir
 defmodule MyLiveView do
@@ -168,23 +180,43 @@ defmodule MyLiveView do
 end
 ```
 
-## Comparison with Other Libraries
+**JavaScript (Hook Setup):**
 
-| Feature | LiveReactIslands | phoenix_islands | phoenix_live_react |
-|---------|------------------|-----------------|-------------------|
-| Prop Ownership Tracking | ✅ | ❌ | ❌ |
-| Server-Side Rendering | ✅ (DenoRider) | ❌ | ✅ (Basic) |
-| Global State Management | ✅ | ❌ | ❌ |
-| Macro-based API | ✅ | ❌ | ❌ |
-| Single React Root | ✅ | ❌ | ❌ |
-| TypeScript Support | ✅ | ⚠️ | ⚠️ |
+```javascript
+import { createIslandsHook } from '@live-react-islands/core';
+import { createStore } from 'zustand/vanilla'; // or any store library
 
-## Documentation
+// Create your store (store-agnostic)
+const store = createStore((set) => ({ theme: 'light', user: null }));
 
-- [Getting Started Guide](./docs/getting-started.md)
-- [API Reference - Elixir](./packages/elixir/live_react_islands/README.md)
-- [API Reference - React](./packages/react/README.md)
-- [Examples](./examples/)
+// Handler receives global updates from LiveView
+const globalStoreHandler = (globals) => {
+  store.setState(globals);
+};
+
+export default createIslandsHook(
+  { Counter, TodoList },
+  YourContextProvider,     // Optional React context wrapper
+  globalStoreHandler       // Receives globals from server
+);
+```
+
+**React (Components):**
+
+```jsx
+// Use your own store solution
+function MyIsland() {
+  const { theme, user } = useStore();  // Your store hook
+
+  return (
+    <div className={theme}>
+      <h1>Welcome, {user.name}!</h1>
+    </div>
+  );
+}
+```
+
+The library is **store-agnostic** - you provide the handler to integrate with your preferred state management solution (Zustand, Redux, Context, etc.).
 
 ## Development
 
@@ -205,8 +237,11 @@ yarn build
 ### Running Examples
 
 ```bash
-cd examples/basic-demo
+cd examples/with-esbuild  # or examples/with-vite
 mix deps.get
+yarn install
+yarn watch  # or yarn dev for Vite
+# In another terminal:
 mix phx.server
 ```
 
