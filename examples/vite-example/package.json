@@ -1,11 +1,11 @@
 {
-  "name": "with-vite",
+  "name": "vite-example",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Example Phoenix app using LiveReactIslands with Vite bundler",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite build --watch",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -13,12 +13,14 @@
     "@live-react-islands/core": "workspace:*",
     "phoenix": "^1.7.18",
     "phoenix_html": "^4.1.1",
-    "phoenix_live_view": "^1.0.1",
+    "phoenix_live_view": "1.0.18",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.15",
     "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4",
     "vite": "^6.0.7"
   }
 }

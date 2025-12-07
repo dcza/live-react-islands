@@ -1,5 +1,5 @@
 {
-  "name": "with-esbuild",
+  "name": "esbuild-example",
   "version": "0.1.0",
   "private": true,
   "description": "Example Phoenix app using LiveReactIslands with esbuild bundler",

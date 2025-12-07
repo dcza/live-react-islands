@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@source "../../lib/**/*.*ex";
+
+@theme {
+  --color-brand-500: oklch(0.6 0.2 250);
+}
+
+@variant phx-click-loading (&:where(.phx-click-loading, .phx-click-loading *));
+@variant phx-submit-loading (&:where(.phx-submit-loading, .phx-submit-loading *));
+@variant phx-change-loading (&:where(.phx-change-loading, .phx-change-loading *));
