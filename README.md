@@ -1,6 +1,12 @@
 # LiveReactIslands
 
+> **⚠️ Work in Progress**: This project is currently under active development and is not intended for public use yet.
+
 **React Islands for Phoenix LiveView** - Embed React components in LiveView with bidirectional communication, server-side rendering, and global state management.
+
+## Demo
+
+![Demo](docs/demo01.gif)
 
 ## Features
 
