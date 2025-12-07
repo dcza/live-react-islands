@@ -22,8 +22,7 @@ defmodule LiveReactIslands.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
-      mod: {LiveReactIslands.Application, []}
+      extra_applications: [:logger]
     ]
   end
 

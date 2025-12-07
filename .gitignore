@@ -55,5 +55,3 @@ tmp/
 temp/
 *.tmp
 
-# Phoenix
-priv/static/assets/

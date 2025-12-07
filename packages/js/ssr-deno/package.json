@@ -1,7 +1,7 @@
 {
-  "name": "@live-react-islands/core",
+  "name": "@live-react-islands/ssr-deno",
   "version": "0.1.0",
-  "description": "Core React integration for LiveReactIslands - Phoenix LiveView hook and utilities",
+  "description": "Deno-based SSR renderer for LiveReactIslands",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -12,27 +12,24 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "test": "jest",
     "clean": "rm -rf dist"
   },
   "keywords": [
     "phoenix",
     "liveview",
     "react",
-    "islands",
     "ssr",
-    "elixir"
+    "deno",
+    "server-side-rendering"
   ],
   "author": "David Czaplinski",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/dcza/live-react-islands.git",
-    "directory": "packages/js/core"
+    "directory": "packages/js/ssr-deno"
   },
   "peerDependencies": {
-    "phoenix": "^1.7.0 || ^1.8.0",
-    "phoenix_live_view": "^1.0.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
@@ -43,7 +40,6 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "rollup": "^4.24.0",
-    "tslib": "^2.8.1",
     "typescript": "^5.6.3"
   }
 }
