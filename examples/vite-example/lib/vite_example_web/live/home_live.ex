@@ -14,7 +14,11 @@ defmodule ViteExampleWeb.HomeLive do
         </h1>
         <.live_component
           module={ViteExampleWeb.Components.CounterIsland}
-          id="counter"
+          id="counter_1"
+        />
+         <.live_component
+          module={ViteExampleWeb.Components.CounterIsland}
+          id="counter_2"
         />
         </div>
     </div>

@@ -1,0 +1,152 @@
+import React, { ComponentType } from "react";
+import IslandsManager from "./islandsManager";
+import type { Manager, IslandsMap, SSRStrategy, PushEventFn } from "./types";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface LiveViewHook {
+  el: HTMLElement;
+  pushEvent: (
+    event: string,
+    payload: any,
+    callback?: (reply: any, ref: any) => void
+  ) => void;
+  pushEventTo: (target: string, event: string, payload: any) => void;
+  handleEvent: (event: string, callback: (data: any) => void) => void;
+}
+
+export interface CreateHooksOptions {
+  islands: IslandsMap;
+  SharedContextProvider?: ComponentType<{ children: React.ReactNode }>;
+  globalStoreHandler?: ((data: any) => void) | null;
+  manager?: Manager;
+}
+
+// ============================================================================
+// Event Handler Adapter
+// ============================================================================
+
+function createPushEventFn(hook: LiveViewHook): PushEventFn {
+  return (eventName: string, payload: any) => {
+    hook.pushEventTo(`#${hook.el.id}`, eventName, payload);
+  };
+}
+
+// ============================================================================
+// Main Hook Factory (LiveView Adapter Layer)
+// ============================================================================
+
+const NullContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => children;
+
+export function createHooks({
+  islands: islandsMap = {},
+  SharedContextProvider = NullContextProvider,
+  globalStoreHandler = null,
+  manager = IslandsManager,
+}: CreateHooksOptions) {
+  let managerState = manager.initialize(islandsMap, SharedContextProvider);
+
+  let globalsRequested = false;
+  let globalsReady = false;
+  let navigationCounter = 0;
+
+  // Track navigation events
+  if (typeof window !== "undefined") {
+    window.addEventListener("phx:page-loading-start", () => {
+      console.log("[Hook] Navigated, count: " + navigationCounter);
+      navigationCounter++;
+    });
+  }
+
+  const Hook: Partial<LiveViewHook> & {
+    mounted: (this: LiveViewHook) => void;
+    updated?: (this: LiveViewHook) => void;
+    destroyed: (this: LiveViewHook) => void;
+  } = {
+    mounted(this: LiveViewHook) {
+      console.log("[Hook] Mount:", this.el.id);
+
+      // Pull globals once on first island mount
+      if (!globalsRequested && globalStoreHandler) {
+        globalsRequested = true;
+        this.pushEvent("get_globals", {}, (reply, ref) => {
+          globalStoreHandler(reply);
+          this.handleEvent("update_globals", (data) => {
+            globalStoreHandler(data);
+          });
+          globalsReady = true;
+          manager.enableRendering(managerState);
+        });
+      }
+
+      // Handle mount logic
+      const { comp: componentName, ssr: ssrData } = this.el.dataset;
+      if (!componentName) {
+        console.error(
+          `[LiveReactIslands] Element '${this.el.id}' missing data-comp attribute`
+        );
+        return;
+      }
+
+      let ssrStrategy: SSRStrategy;
+      switch (ssrData) {
+        case "overwrite":
+          ssrStrategy = "overwrite";
+          break;
+        case "hydrate_root":
+          ssrStrategy = "hydrate_root";
+          break;
+        default:
+          ssrStrategy = "none";
+      }
+
+      const pushEvent = createPushEventFn(this);
+
+      managerState = manager.mountIsland(managerState, {
+        element: this.el,
+        componentName,
+        ssrStrategy,
+        pushEvent,
+        defaultContextProvider: SharedContextProvider,
+      });
+
+      console.log({
+        element: this.el,
+        componentName,
+        ssrStrategy,
+        pushEvent,
+        defaultContextProvider: SharedContextProvider,
+      });
+
+      // Setup prop update handler
+      this.handleEvent(
+        "p",
+        ({ id, ...props }: { id: string; [key: string]: any }) => {
+          if (id !== this.el.id) return;
+          manager.updateIslandProps(managerState, {
+            islandElementId: this.el.id,
+            props,
+          });
+        }
+      );
+    },
+
+    updated(this: LiveViewHook) {
+      console.log("[Hook] Updated:", this.el.id);
+    },
+
+    destroyed(this: LiveViewHook) {
+      console.log("[Hook] Destroyed:", this.el.id);
+
+      manager.unmountIsland(managerState, {
+        islandElementId: this.el.id,
+      });
+    },
+  };
+
+  return { LiveReactIslands: Hook };
+}

@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import { createPortal } from "react-dom";
 // import { exposeSSR } from "./renderersSSR";
 
+export { createHooks } from "./createHooks";
+
 const IslandsRoot = ({ rootId, globalsReady: initialGlobalsReady }) => {
   const [globalsReady, setGlobalsReady] = useState(initialGlobalsReady);
   const [islands, setIslands] = useState({});
@@ -87,7 +89,7 @@ function handlePushEvent(eventName, payload) {
 
 const DefaultContextProvider = ({ children }) => children;
 
-export function createHooks({
+function _createHooks({
   islands: islandComponents = {},
   ContextProvider = DefaultContextProvider,
   globalStoreHandler = null,

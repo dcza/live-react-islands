@@ -1,5 +1,5 @@
 defmodule LiveReactIslands.Component do
-  @type ssr_strategy :: :none | :override_ssr
+  @type ssr_strategy :: :none | :overwrite | :hydrate_root
 
   defmacro __using__(opts) do
     component_name =
@@ -37,11 +37,11 @@ defmodule LiveReactIslands.Component do
           end)
 
         {:ok, staticHTML} =
-          if @ssr_strategy == :override_ssr do
+          if @ssr_strategy == :overwrite do
             case Application.get_env(:live_react_islands, :ssr_renderer) do
               nil ->
                 raise """
-                SSR strategy is :override_ssr but no :ssr_renderer configured.
+                SSR strategy is :overwrite but no :ssr_renderer configured.
 
                 Add to your config/config.exs:
 
@@ -64,7 +64,7 @@ defmodule LiveReactIslands.Component do
         %Phoenix.LiveView.Rendered{
           static: [
             """
-            <div id="#{assigns.id}" phx-hook="LiveReactIslands" phx-update="ignore" data-component="#{component_name}">
+            <div id="#{assigns.id}" phx-hook="LiveReactIslands" phx-update="ignore" data-comp="#{component_name}" data-ssr="#{@ssr_strategy}">
               #{staticHTML}
             </div>
             """
