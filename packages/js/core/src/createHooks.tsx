@@ -1,6 +1,13 @@
 import React, { ComponentType } from "react";
 import IslandsManager from "./islandsManager";
-import type { Manager, IslandsMap, SSRStrategy, PushEventFn } from "./types";
+import type {
+  Manager,
+  IslandsMap,
+  SSRStrategy,
+  PushEventFn,
+  ContextProviderComponenet,
+  IslandComponent,
+} from "./types";
 
 // ============================================================================
 // Types
@@ -19,7 +26,7 @@ interface LiveViewHook {
 
 export interface CreateHooksOptions {
   islands: IslandsMap;
-  SharedContextProvider?: ComponentType<{ children: React.ReactNode }>;
+  SharedContextProvider?: ContextProviderComponenet;
   globalStoreHandler?: ((data: any) => void) | null;
   manager?: Manager;
 }
@@ -35,12 +42,41 @@ function createPushEventFn(hook: LiveViewHook): PushEventFn {
 }
 
 // ============================================================================
-// Main Hook Factory (LiveView Adapter Layer)
+// Helper
 // ============================================================================
 
 const NullContextProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => children;
+
+const extractIslandConfig = (
+  islandsMap: IslandsMap,
+  componentName: string,
+  defaultContextProvider: ContextProviderComponenet
+): {
+  Component: IslandComponent;
+  ContextProvider: ContextProviderComponenet;
+} | null => {
+  const config = islandsMap[componentName];
+
+  if (!config) {
+    return null;
+  }
+
+  // Handle both direct component and config object
+  if (typeof config === "function") {
+    return { Component: config, ContextProvider: defaultContextProvider };
+  }
+
+  return {
+    Component: config.Component,
+    ContextProvider: config.ContextProvider || defaultContextProvider,
+  };
+};
+
+// ============================================================================
+// Main Hook Factory (LiveView Adapter Layer)
+// ============================================================================
 
 export function createHooks({
   islands: islandsMap = {},
@@ -48,10 +84,9 @@ export function createHooks({
   globalStoreHandler = null,
   manager = IslandsManager,
 }: CreateHooksOptions) {
-  let managerState = manager.initialize(islandsMap, SharedContextProvider);
+  let managerState = manager.initialize({ SharedContextProvider });
 
   let globalsRequested = false;
-  let globalsReady = false;
   let navigationCounter = 0;
 
   // Track navigation events
@@ -78,7 +113,6 @@ export function createHooks({
           this.handleEvent("update_globals", (data) => {
             globalStoreHandler(data);
           });
-          globalsReady = true;
           manager.enableRendering(managerState);
         });
       }
@@ -88,6 +122,18 @@ export function createHooks({
       if (!componentName) {
         console.error(
           `[LiveReactIslands] Element '${this.el.id}' missing data-comp attribute`
+        );
+        return;
+      }
+
+      const islandConfig = extractIslandConfig(
+        islandsMap,
+        componentName,
+        SharedContextProvider
+      );
+      if (!islandConfig) {
+        console.error(
+          `[LiveReactIslands] React island '${componentName}' not found`
         );
         return;
       }
@@ -108,18 +154,9 @@ export function createHooks({
 
       managerState = manager.mountIsland(managerState, {
         element: this.el,
-        componentName,
+        islandConfig,
         ssrStrategy,
         pushEvent,
-        defaultContextProvider: SharedContextProvider,
-      });
-
-      console.log({
-        element: this.el,
-        componentName,
-        ssrStrategy,
-        pushEvent,
-        defaultContextProvider: SharedContextProvider,
       });
 
       // Setup prop update handler

@@ -5,32 +5,34 @@ import type {
   Manager,
   IslandsMap,
   IslandComponent,
-  IslandConfig,
-  State,
   MountIslandParams,
-  SSRStrategy,
   PushEventFn,
   UnmountIslandParams,
-  UpdateIslandPropsParams,
-  IslandData,
-  SharedRootRegistry,
-  SharedRootHandle,
+  ContextProviderComponenet,
+  ManagerState,
 } from "./types";
-import { PortalIslandsRendererHandle } from "./PortalIslandsRenderer";
+import {
+  PortalIslandsRenderer,
+  PortalIslandsRendererHandle,
+} from "./PortalIslandsRenderer";
 
 const ManagerMock: Manager = {
-  initialize: (islandsMap, SharedContextProvider) => ({
-    roots: {},
-    sharedRootRef: null,
-  }),
-  mountIsland: (state, params) => ({
-    roots: {},
-    sharedRootRef: null,
-  }),
-  unmountIsland: (state, params) => ({
-    roots: {},
-    sharedRootRef: null,
-  }),
+  initialize: ({ SharedContextProvider }) => {
+    const rootElement = getOrCreateSharedRootElement();
+    const root = ReactDOM.createRoot(rootElement);
+    const sharedRendererRef = React.createRef<PortalIslandsRendererHandle>();
+    root.render(
+      <SharedContextProvider>
+        <PortalIslandsRenderer ref={sharedRendererRef} />
+      </SharedContextProvider>
+    );
+    return {
+      roots: { [SHARED_ROOT_ID]: root },
+      sharedRendererRef,
+    };
+  },
+  mountIsland: (state, params) => state,
+  unmountIsland: (state, params) => state,
   updateIslandProps: (state, params) => {},
   enableRendering: (state) => {},
 };
@@ -43,7 +45,7 @@ export const SHARED_ROOT_ID = "__live_react_islands_shared_root__";
 // Pure Helper Functions
 // ============================================================================
 
-const getOrCreateRootElement = (): HTMLElement => {
+const getOrCreateSharedRootElement = (): HTMLElement => {
   let rootElement = document.getElementById(SHARED_ROOT_ID);
   if (!rootElement) {
     rootElement = document.createElement("div");
@@ -54,75 +56,9 @@ const getOrCreateRootElement = (): HTMLElement => {
   return rootElement;
 };
 
-export const extractIslandConfig = (
-  islandComponents: IslandsMap,
-  componentName: string
-): {
-  Component: IslandComponent;
-  ContextProvider?: ComponentType<{ children: React.ReactNode }>;
-} | null => {
-  const config = islandComponents[componentName];
-
-  if (!config) {
-    return null;
-  }
-
-  // Handle both direct component and config object
-  if (typeof config === "function") {
-    return { Component: config };
-  }
-
-  return {
-    Component: config.component,
-    ContextProvider: config.ContextProvider,
-  };
-};
-
 // ============================================================================
 // Root Management
 // ============================================================================
-
-export const createSharedRootWithPortals = (
-  ContextProvider: ComponentType<{ children: React.ReactNode }>,
-  globalState: State,
-  IslandsRootComponent: ComponentType<any>,
-  registryRef: React.RefObject<any>
-): ReactDOM.Root => {
-  console.log("[createSharedRoot] Creating shared root");
-
-  const rootElement = getOrCreateRootElement();
-  const root = ReactDOM.createRoot(rootElement);
-
-  root.render(
-    <ContextProvider>
-      <PortalIslandsRenderer
-        ref={registryRef}
-        globalsReady={globalState.globalsReady}
-      />
-    </ContextProvider>
-  );
-
-  globalState.roots[SHARED_ROOT_ID] = root;
-  return root;
-};
-
-export const getOrCreateSharedRoot = (
-  ContextProvider: ComponentType<{ children: React.ReactNode }>,
-  globalState: State,
-  IslandsRootComponent: ComponentType<any>,
-  registryRef: React.RefObject<any>
-): ReactDOM.Root => {
-  if (globalState.roots[SHARED_ROOT_ID]) {
-    return globalState.roots[SHARED_ROOT_ID];
-  }
-
-  return createSharedRootWithPortals(
-    ContextProvider,
-    globalState,
-    IslandsRootComponent,
-    registryRef
-  );
-};
 
 export const createIndividualRoot = (
   element: HTMLElement,
@@ -154,7 +90,7 @@ export const createIndividualRoot = (
 // Render Control
 // ============================================================================
 
-export const enableRendering = (state: State): void => {
+export const enableRendering = (state: ManagerState): void => {
   if (state.sharedRootRef?.current) {
     state.sharedRootRef.current.setGlobalsReady(true);
   }
@@ -169,7 +105,7 @@ export const mountSharedIsland = (
   Component: IslandComponent,
   props: Record<string, any>,
   pushEvent: PushEventFn,
-  state: State
+  state: ManagerState
 ): void => {
   const addIslandWhenReady = () => {
     if (state.sharedRootRef?.current?.registry?.addIsland) {
@@ -193,7 +129,7 @@ export const mountIndividualIsland = (
   element: HTMLElement,
   Component: IslandComponent,
   props: Record<string, any>,
-  ContextProvider: ComponentType<{ children: React.ReactNode }>,
+  ContextProvider: ContextProviderComponenet,
   pushEvent: PushEventFn,
   IndividualRendererComponent: ComponentType<any>
 ): ReactDOM.Root => {
@@ -272,7 +208,7 @@ export const unmountIsland = (params: UnmountIslandParams): void => {
 export const updateSharedIslandProps = (
   elementId: string,
   props: Record<string, any>,
-  state: State
+  state: ManagerState
 ): void => {
   state.sharedRootRef?.current?.registry?.updateIsland?.({
     id: elementId,
@@ -284,7 +220,7 @@ export const updateSharedIslandProps = (
 // Navigation & Cleanup
 // ============================================================================
 
-export const cleanupAllRoots = (state: State): void => {
+export const cleanupAllRoots = (state: ManagerState): void => {
   console.log("[cleanupAllRoots] Cleaning up shared root");
   if (state.roots[SHARED_ROOT_ID]) {
     state.roots[SHARED_ROOT_ID].unmount();
@@ -296,7 +232,7 @@ export const cleanupAllRoots = (state: State): void => {
 
 export const handleNavigation = (
   currentNavigationCounter: number,
-  globalState: State
+  globalState: ManagerState
 ): boolean => {
   const navigationOccurred =
     globalState.lastNavigationCounter !== undefined &&
@@ -315,7 +251,7 @@ export const handleNavigation = (
 // Global State Factory
 // ============================================================================
 
-export const createState = (): State => ({
+export const createState = (): ManagerState => ({
   roots: {},
   sharedRootRegistry: {},
   globalsReady: false,
@@ -328,8 +264,8 @@ export const createState = (): State => ({
 // ============================================================================
 
 export const initializeSharedRoot = (
-  ContextProvider: ComponentType<{ children: React.ReactNode }>,
-  globalState: State,
+  ContextProvider: ContextProviderComponenet,
+  globalState: ManagerState,
   IslandsRootComponent: ComponentType<any>,
   registryRef: React.RefObject<any>
 ): void => {
@@ -351,9 +287,9 @@ export interface HookMountParams {
   element: HTMLElement;
   componentName: string;
   islandComponents: IslandsMap;
-  defaultContextProvider: ComponentType<{ children: React.ReactNode }>;
+  defaultContextProvider: ContextProviderComponenet;
   pushEvent: PushEventFn;
-  globalState: State;
+  globalState: ManagerState;
   navigationCounter: number;
   globalsRequested: boolean;
   globalStoreHandler: ((data: any) => void) | null;
@@ -422,7 +358,7 @@ export const updateIslandProps = (
   elementId: string,
   props: Record<string, any>,
   rootType: "shared" | "individual",
-  globalState: State
+  globalState: ManagerState
 ): void => {
   if (rootType === "shared") {
     updateSharedIslandProps(elementId, props, globalState);

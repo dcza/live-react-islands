@@ -1,4 +1,5 @@
 import { ComponentType } from "react";
+import { PortalIslandsRendererHandle } from "./PortalIslandsRenderer";
 
 // ============================================================================
 // Core Types
@@ -6,14 +7,12 @@ import { ComponentType } from "react";
 
 export type IslandsMap = Record<string, IslandComponent | IslandConfig>;
 export type IslandComponent = ComponentType<any>;
+export type ContextProviderComponenet = ComponentType<{
+  children: React.ReactNode;
+}>;
 export interface IslandConfig {
-  component: IslandComponent;
-  ContextProvider?: ComponentType<{ children: React.ReactNode }>;
-}
-
-export interface State {
-  roots: Record<string, any>;
-  sharedRootRef: React.RefObject<SharedRootHandle> | null;
+  Component: IslandComponent;
+  ContextProvider?: ContextProviderComponenet;
 }
 
 export type SSRStrategy = "none" | "overwrite" | "hydrate_root";
@@ -50,15 +49,25 @@ export interface SharedRootHandle {
 // Manager Interface
 // ============================================================================
 
+export interface ManagerState {
+  roots: Record<string, any>;
+  sharedRendererRef: React.RefObject<PortalIslandsRendererHandle>;
+}
+
 export interface Manager {
-  initialize: (
-    islandsMap: IslandsMap,
-    SharedContextProvider: ComponentType<{ children: React.ReactNode }>
-  ) => State;
-  mountIsland: (state: State, params: MountIslandParams) => State;
-  unmountIsland: (state: State, params: UnmountIslandParams) => State;
-  updateIslandProps: (state: State, params: UpdateIslandPropsParams) => void;
-  enableRendering: (state: State) => void;
+  initialize: (params: {
+    SharedContextProvider: ContextProviderComponenet;
+  }) => ManagerState;
+  mountIsland: (state: ManagerState, params: MountIslandParams) => ManagerState;
+  unmountIsland: (
+    state: ManagerState,
+    params: UnmountIslandParams
+  ) => ManagerState;
+  updateIslandProps: (
+    state: ManagerState,
+    params: UpdateIslandPropsParams
+  ) => void;
+  enableRendering: (state: ManagerState) => void;
 }
 
 // ============================================================================
@@ -67,9 +76,8 @@ export interface Manager {
 
 export interface MountIslandParams {
   element: HTMLElement;
-  componentName: string;
+  islandConfig: IslandConfig;
   ssrStrategy: SSRStrategy;
-  defaultContextProvider: ComponentType<{ children: React.ReactNode }>;
   pushEvent: PushEventFn;
 }
 

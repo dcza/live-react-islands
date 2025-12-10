@@ -1,4 +1,9 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef } from "react";
+import React, {
+  useState,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import { createPortal } from "react-dom";
 import type { IslandData, SharedRootRegistry } from "./types";
 import { IslandRenderer } from "./IslandRenderer";
@@ -7,26 +12,24 @@ import { IslandRenderer } from "./IslandRenderer";
 // Portal Islands Renderer (renders islands via portals in shared root)
 // ============================================================================
 
-interface PortalIslandsRendererProps {
-  globalsReady: boolean;
-}
+interface PortalIslandsRendererProps {}
 
 export interface PortalIslandsRendererHandle {
-  setGlobalsReady: (ready: boolean) => void;
+  setRenderingEnabled: (enabled: boolean) => void;
   registry: SharedRootRegistry;
 }
 
 export const PortalIslandsRenderer = forwardRef<
   PortalIslandsRendererHandle,
   PortalIslandsRendererProps
->(({ globalsReady: initialGlobalsReady }, ref) => {
-  const [globalsReady, setGlobalsReady] = useState(initialGlobalsReady);
+>((_props, ref) => {
+  const [renderingEnabled, setRenderingEnabled] = useState(false);
   const [islands, setIslands] = useState<Record<string, IslandData>>({});
   const clearedElements = useRef(new Set<string>());
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
-    setGlobalsReady,
+    setRenderingEnabled,
     registry: {
       addIsland: (data: IslandData) => {
         console.log("[PortalIslandsRenderer] Adding island:", data.el.id);
@@ -51,7 +54,7 @@ export const PortalIslandsRenderer = forwardRef<
     },
   }));
 
-  if (!globalsReady) {
+  if (!renderingEnabled) {
     console.log("[PortalIslandsRenderer] Waiting for globals");
     return null;
   }
@@ -85,4 +88,4 @@ export const PortalIslandsRenderer = forwardRef<
       )}
     </>
   );
-};
+});
