@@ -19,7 +19,6 @@ interface ManagerState {
   roots: Record<string, any>;
   individualRendererRefs: Record<string, any>;
   sharedRendererRef: React.RefObject<PortalIslandsRendererHandle>;
-  pendingSharedIslands: IslandData[];
 }
 
 export interface Manager {
@@ -51,23 +50,16 @@ const getOrCreateSharedRootElement = (): HTMLElement => {
   return rootElement;
 };
 
-const flushPendingIslands = (state: ManagerState): void => {
-  console.log(
-    `[IslandsManager] Flushing ${state.pendingSharedIslands.length} pending islands`
-  );
-  state.pendingSharedIslands.forEach((data) => {
-    state.sharedRendererRef.current?.addIsland(data);
-  });
-  state.pendingSharedIslands = [];
-};
-
 const mountSharedIsland = (state: ManagerState, data: IslandData): void => {
-  if (state.sharedRendererRef.current) {
-    state.sharedRendererRef.current.addIsland(data);
-  } else {
-    console.log(`[Island(${data.id})] Queueing until renderer ready`);
-    state.pendingSharedIslands.push(data);
-  }
+  const addIslandWhenReady = () => {
+    if (state.sharedRendererRef.current?.addIsland) {
+      state.sharedRendererRef.current.addIsland(data);
+    } else {
+      console.log(`[Island(${data.id})] Waiting for root to be ready...`);
+      setTimeout(addIslandWhenReady, 10);
+    }
+  };
+  addIslandWhenReady();
 };
 
 // ============================================================================
@@ -79,30 +71,19 @@ const ManagerObj: Manager = {
     const rootElement = getOrCreateSharedRootElement();
     const root = ReactDOM.createRoot(rootElement);
     const sharedRendererRef = React.createRef<PortalIslandsRendererHandle>();
-
-    const state: ManagerState = {
-      renderingEnabled: false,
-      roots: { [SHARED_ROOT_ID]: root },
-      individualRendererRefs: {},
-      sharedRendererRef,
-      pendingSharedIslands: [],
-    };
-
     root.render(
       React.createElement(
         SharedContextProvider,
         null,
-        React.createElement(PortalIslandsRenderer, {
-          ref: sharedRendererRef,
-          onReady: () => {
-            console.log("[IslandsManager] Shared renderer ready");
-            flushPendingIslands(state);
-          },
-        })
+        React.createElement(PortalIslandsRenderer, { ref: sharedRendererRef })
       )
     );
-
-    return state;
+    return {
+      renderingEnabled: false,
+      roots: { [SHARED_ROOT_ID]: root },
+      individualRendererRefs: {},
+      sharedRendererRef,
+    };
   },
   enableRendering: (state) => {
     state.sharedRendererRef.current?.setRenderingEnabled(true);

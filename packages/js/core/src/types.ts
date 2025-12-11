@@ -8,13 +8,13 @@ export type IslandsMap = Record<string, IslandComponent | IslandConfig>;
 
 export type IslandComponent = ComponentType<any>;
 
-export type ContextProviderComponenet = ComponentType<{
+export type ContextProviderComponent = ComponentType<{
   children: React.ReactNode;
 }>;
 
 export interface IslandConfig {
   Component: IslandComponent;
-  ContextProvider?: ContextProviderComponenet;
+  ContextProvider?: ContextProviderComponent;
 }
 
 export type SSRStrategy = "none" | "overwrite" | "hydrate_root";
@@ -26,7 +26,7 @@ export interface IslandData {
   el: HTMLElement;
   ssrStrategy: SSRStrategy;
   Component: IslandComponent;
-  ContextProvider?: ContextProviderComponenet;
+  ContextProvider?: ContextProviderComponent;
   props: Record<string, any>;
   pushEvent: PushEventFn;
 }

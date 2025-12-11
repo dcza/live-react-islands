@@ -3,7 +3,7 @@ import type {
   IslandsMap,
   SSRStrategy,
   PushEventFn,
-  ContextProviderComponenet,
+  ContextProviderComponent,
   IslandComponent,
 } from "./types";
 
@@ -24,7 +24,7 @@ interface LiveViewHook {
 
 export interface CreateHooksOptions {
   islands: IslandsMap;
-  SharedContextProvider?: ContextProviderComponenet;
+  SharedContextProvider?: ContextProviderComponent;
   globalStoreHandler?: ((data: any) => void) | null;
   manager?: Manager;
 }
@@ -50,10 +50,10 @@ const NullContextProvider: React.FC<{ children: React.ReactNode }> = ({
 const extractIslandConfig = (
   islandsMap: IslandsMap,
   componentName: string,
-  defaultContextProvider: ContextProviderComponenet
+  defaultContextProvider: ContextProviderComponent
 ): {
   Component: IslandComponent;
-  ContextProvider: ContextProviderComponenet;
+  ContextProvider: ContextProviderComponent;
 } | null => {
   const config = islandsMap[componentName];
 
