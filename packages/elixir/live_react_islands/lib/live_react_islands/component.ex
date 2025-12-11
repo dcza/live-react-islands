@@ -36,7 +36,7 @@ defmodule LiveReactIslands.Component do
             Map.put(acc, k, Process.get({:global, k}))
           end)
 
-        {:ok, staticHTML} =
+        staticHTML =
           if @ssr_strategy == :overwrite do
             case Application.get_env(:live_react_islands, :ssr_renderer) do
               nil ->
@@ -46,19 +46,36 @@ defmodule LiveReactIslands.Component do
                 Add to your config/config.exs:
 
                     config :live_react_islands,
+                      ssr_renderer: LiveReactIslands.SSR.ViteRenderer
+
+                Or for production:
+
+                    config :live_react_islands,
                       ssr_renderer: LiveReactIslands.SSR.DenoRenderer
                 """
 
               renderer_module ->
-                renderer_module.render_component(
-                  component_name,
-                  assigns.id,
-                  props,
-                  globals
-                )
+                case renderer_module.render_component(
+                       component_name,
+                       assigns.id,
+                       props,
+                       globals
+                     ) do
+                  {:ok, html} ->
+                    html
+
+                  {:error, reason} ->
+                    require Logger
+
+                    Logger.warning(
+                      "SSR failed for #{component_name}: #{inspect(reason)} - falling back to client-side rendering"
+                    )
+
+                    "<!-- SSR failed: #{inspect(reason)}, React will render client-side -->"
+                end
             end
           else
-            {:ok, "<!-- React renders here -->"}
+            "<!-- React renders here -->"
           end
 
         %Phoenix.LiveView.Rendered{

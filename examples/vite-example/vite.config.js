@@ -13,12 +13,23 @@ export default defineConfig({
     manifest: false,
     rollupOptions: {
       input: {
+        // Client side bundle added to the phoenix root layout
         main: "./src/main.jsx",
+        // Server side rendering bundle
+        ssr: "./src/ssr.js",
       },
       output: {
-        entryFileNames: "[name].js",
-        chunkFileNames: "[name].js",
-        assetFileNames: "[name].[ext]",
+        // Only main.js/css and ssr.js are static
+        entryFileNames(chunk) {
+          if (chunk.name === "main") return "main.js";
+          if (chunk.name === "ssr") return "ssr.js";
+          return "[name]-[hash].js";
+        },
+        chunkFileNames: "[name]-[hash].js",
+        assetFileNames(assetInfo) {
+          if (assetInfo.name === "main.css") return "main.css";
+          return "[name]-[hash].[ext]";
+        },
       },
     },
   },

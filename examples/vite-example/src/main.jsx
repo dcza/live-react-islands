@@ -1,10 +1,10 @@
 import "./index.css";
 import { createHooks } from "@live-react-islands/core";
-import Counter from "./islands/Counter";
+import islands from "./islands";
 
 // Create the React Islands hooks
 const islandHooks = createHooks({
-  islands: { Counter },
+  islands,
   //globalStoreHandler: (data) => console.log("[globalStoreHandler]", data),
 });
 
