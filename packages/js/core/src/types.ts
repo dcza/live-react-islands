@@ -30,3 +30,18 @@ export interface IslandData {
   props: Record<string, any>;
   pushEvent: PushEventFn;
 }
+
+export interface SharedIslandsRendererProps {
+  onReady?: () => void;
+}
+
+export interface SharedIslandsRendererHandle {
+  setRenderingEnabled: (enabled: boolean) => void;
+  addIsland: (data: IslandData) => void;
+  updateIsland: (id: string, props: Record<string, any>) => void;
+  removeIsland: (id: string) => void;
+}
+
+export type SharedIslandsRendererComponent = React.ForwardRefExoticComponent<
+  SharedIslandsRendererProps & React.RefAttributes<SharedIslandsRendererHandle>
+>;

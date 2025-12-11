@@ -8,22 +8,16 @@ import React, {
   useEffect,
 } from "react";
 import { createPortal } from "react-dom";
-import type { IslandData, IslandComponent } from "./types";
-
-interface PortalIslandsRendererProps {
-  onReady?: () => void;
-}
-
-export interface PortalIslandsRendererHandle {
-  setRenderingEnabled: (enabled: boolean) => void;
-  addIsland: (data: IslandData) => void;
-  updateIsland: (id: string, props: Record<string, any>) => void;
-  removeIsland: (id: string) => void;
-}
+import type {
+  IslandData,
+  IslandComponent,
+  SharedIslandsRendererHandle,
+  SharedIslandsRendererProps,
+} from "./types";
 
 export const PortalIslandsRenderer = forwardRef<
-  PortalIslandsRendererHandle,
-  PortalIslandsRendererProps
+  SharedIslandsRendererHandle,
+  SharedIslandsRendererProps
 >((props, ref) => {
   const [renderingEnabled, setRenderingEnabled] = useState(false);
   const [islands, setIslands] = useState<Record<string, IslandData>>({});

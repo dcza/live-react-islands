@@ -1,11 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import type { ContextProviderComponent, IslandData } from "./types";
-import {
-  PortalIslandsRenderer,
-  PortalIslandsRendererHandle,
-} from "./PortalIslandsRenderer";
+import type {
+  ContextProviderComponent,
+  IslandData,
+  SharedIslandsRendererComponent,
+  SharedIslandsRendererHandle,
+} from "./types";
+import { PortalIslandsRenderer } from "./PortalIslandsRenderer";
 
 // Constant root ID - one shared root per application
 export const SHARED_ROOT_ID = "__live_react_islands_shared_root__";
@@ -18,13 +20,14 @@ interface ManagerState {
   renderingEnabled: boolean;
   roots: Record<string, any>;
   individualRendererRefs: Record<string, any>;
-  sharedRendererRef: React.RefObject<PortalIslandsRendererHandle>;
+  sharedRendererRef: React.RefObject<SharedIslandsRendererHandle>;
   pendingSharedIslands: IslandData[];
 }
 
 export interface Manager {
   initialize: (params: {
     SharedContextProvider: ContextProviderComponent;
+    SharedIslandsRenderer?: SharedIslandsRendererComponent;
   }) => ManagerState;
   mountIsland: (state: ManagerState, data: IslandData) => ManagerState;
   unmountIsland: (state: ManagerState, id: string) => ManagerState;
@@ -75,10 +78,13 @@ const mountSharedIsland = (state: ManagerState, data: IslandData): void => {
 // ============================================================================
 
 const ManagerObj: Manager = {
-  initialize: ({ SharedContextProvider }) => {
+  initialize: ({
+    SharedContextProvider,
+    SharedIslandsRenderer = PortalIslandsRenderer,
+  }) => {
     const rootElement = getOrCreateSharedRootElement();
     const root = ReactDOM.createRoot(rootElement);
-    const sharedRendererRef = React.createRef<PortalIslandsRendererHandle>();
+    const sharedRendererRef = React.createRef<SharedIslandsRendererHandle>();
 
     const state: ManagerState = {
       renderingEnabled: false,
@@ -92,7 +98,7 @@ const ManagerObj: Manager = {
       React.createElement(
         SharedContextProvider,
         null,
-        React.createElement(PortalIslandsRenderer, {
+        React.createElement(SharedIslandsRenderer, {
           ref: sharedRendererRef,
           onReady: () => {
             console.log("[IslandsManager] Shared renderer ready");
