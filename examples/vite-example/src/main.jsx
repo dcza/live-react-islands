@@ -3,7 +3,10 @@ import { createHooks } from "@live-react-islands/core";
 import Counter from "./islands/Counter";
 
 // Create the React Islands hooks
-const islandHooks = createHooks({ islands: { Counter } });
+const islandHooks = createHooks({
+  islands: { Counter },
+  //globalStoreHandler: (data) => console.log("[globalStoreHandler]", data),
+});
 
 // Set up LiveView
 import "phoenix_html";

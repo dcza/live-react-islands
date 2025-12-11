@@ -1,9 +1,8 @@
 import React, { ComponentType } from "react";
-import { IslandRenderer } from "./IslandRenderer";
 import type { IslandComponent, PushEventFn } from "./types";
 
 // ============================================================================
-// Individual Island Renderer (wraps IslandRenderer with context for individual roots)
+// Individual Island Renderer (wraps component with context for individual roots)
 // ============================================================================
 
 interface IndividualIslandRendererProps {
@@ -19,12 +18,7 @@ export const IndividualIslandRenderer: React.FC<
 > = ({ Component, props, id, pushEvent, ContextProvider }) => {
   return (
     <ContextProvider>
-      <IslandRenderer
-        Component={Component}
-        props={props}
-        id={id}
-        pushEvent={pushEvent}
-      />
+      <Component {...props} id={id} pushEvent={pushEvent} />
     </ContextProvider>
   );
 };

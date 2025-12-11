@@ -3,20 +3,19 @@ import React, {
   useRef,
   useImperativeHandle,
   forwardRef,
+  memo,
+  ComponentType,
 } from "react";
 import { createPortal } from "react-dom";
-import type { IslandData, SharedRootRegistry } from "./types";
-import { IslandRenderer } from "./IslandRenderer";
-
-// ============================================================================
-// Portal Islands Renderer (renders islands via portals in shared root)
-// ============================================================================
+import type { IslandData, IslandComponent } from "./types";
 
 interface PortalIslandsRendererProps {}
 
 export interface PortalIslandsRendererHandle {
   setRenderingEnabled: (enabled: boolean) => void;
-  registry: SharedRootRegistry;
+  addIsland: (data: IslandData) => void;
+  updateIsland: (id: string, props: Record<string, any>) => void;
+  removeIsland: (id: string) => void;
 }
 
 export const PortalIslandsRenderer = forwardRef<
@@ -26,31 +25,33 @@ export const PortalIslandsRenderer = forwardRef<
   const [renderingEnabled, setRenderingEnabled] = useState(false);
   const [islands, setIslands] = useState<Record<string, IslandData>>({});
   const clearedElements = useRef(new Set<string>());
+  const memoizedComponents = useRef(
+    new Map<IslandComponent, ComponentType<any>>()
+  );
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     setRenderingEnabled,
-    registry: {
-      addIsland: (data: IslandData) => {
-        console.log("[PortalIslandsRenderer] Adding island:", data.el.id);
-        setIslands((prev) => ({
-          ...prev,
-          [data.el.id]: data,
-        }));
-      },
-      updateIsland: ({ id, props }) => {
-        setIslands((prev) => ({
-          ...prev,
-          [id]: { ...prev[id], props: { ...prev[id]?.props, ...props } },
-        }));
-      },
-      removeIsland: (id: string) => {
-        setIslands((prev) => {
-          const newState = { ...prev };
-          delete newState[id];
-          return newState;
-        });
-      },
+    addIsland: (data: IslandData) => {
+      console.log("[PortalIslandsRenderer] Adding island:", data.el.id);
+      setIslands((prev) => ({
+        ...prev,
+        [data.el.id]: data,
+      }));
+    },
+    updateIsland: (id, props) => {
+      setIslands((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], props: { ...prev[id]?.props, ...props } },
+      }));
+    },
+    removeIsland: (id: string) => {
+      clearedElements.current?.delete(id);
+      setIslands((prev) => {
+        const newState = { ...prev };
+        delete newState[id];
+        return newState;
+      });
     },
   }));
 
@@ -67,21 +68,21 @@ export const PortalIslandsRenderer = forwardRef<
   return (
     <>
       {Object.entries(islands).map(
-        ([id, { Component, props, el, pushEvent }]) => {
-          // Clear the element once before first portal render
-          if (!clearedElements.current.has(id)) {
+        ([id, { Component, props, el, pushEvent, ssrStrategy }]) => {
+          // Clear element ssr content once before first render
+          if (ssrStrategy === "overwrite" && !clearedElements.current.has(id)) {
             el.innerHTML = "";
             clearedElements.current.add(id);
           }
 
+          // Memoize component to prevent unnecessary re-renders
+          if (!memoizedComponents.current.has(Component)) {
+            memoizedComponents.current.set(Component, memo(Component));
+          }
+          const MemoizedComponent = memoizedComponents.current.get(Component)!;
+
           return createPortal(
-            <IslandRenderer
-              key={id}
-              Component={Component}
-              props={props}
-              id={id}
-              pushEvent={pushEvent}
-            />,
+            <MemoizedComponent key={id} {...props} id={id} pushEvent={pushEvent} />,
             el
           );
         }
