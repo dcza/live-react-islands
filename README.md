@@ -143,7 +143,7 @@ LiveReactIslands tracks which component "owns" each prop:
 
 ### Event Communication
 
-React components receive `pushEvent` and `pushEventTo` functions as props to send events back to LiveView:
+React components receive the `pushEvent` function as a prop to send events back to the LiveComponent:
 
 ```jsx
 function MyComponent({ pushEvent }) {
@@ -152,17 +152,6 @@ function MyComponent({ pushEvent }) {
   };
   // ...
 }
-```
-
-### Server-Side Rendering
-
-Enable SSR for better initial load performance:
-
-```elixir
-use LiveReactIslands.Component,
-  component: "MyComponent",
-  props: %{},
-  ssr_strategy: :override_ssr  # or :none
 ```
 
 ### Global State
@@ -174,12 +163,12 @@ Share state across islands by providing a global store handler when creating the
 ```elixir
 defmodule MyLiveView do
   use MyAppWeb, :live_view
-  use LiveReactIslands.Globals
+  use LiveReactIslands.LiveView, globals: [:theme, :user]
 
   def mount(_params, _session, socket) do
     socket = socket
-    |> assign_global(:theme, "dark")
-    |> assign_global(:user, %{name: "Alice"})
+    |> assign(:theme, "dark")
+    |> assign(:user, %{name: "Alice"})
 
     {:ok, socket}
   end
@@ -189,22 +178,22 @@ end
 **JavaScript (Hook Setup):**
 
 ```javascript
-import { createIslandsHook } from '@live-react-islands/core';
-import { createStore } from 'zustand/vanilla'; // or any store library
+import { createHooks } from "@live-react-islands/core";
+import { createStore } from "zustand/vanilla"; // or any store library
 
 // Create your store (store-agnostic)
-const store = createStore((set) => ({ theme: 'light', user: null }));
+const store = createStore((set) => ({ theme: "light", user: null }));
 
 // Handler receives global updates from LiveView
 const globalStoreHandler = (globals) => {
   store.setState(globals);
 };
 
-export default createIslandsHook(
-  { Counter, TodoList },
-  YourContextProvider,     // Optional React context wrapper
-  globalStoreHandler       // Receives globals from server
-);
+const hooks = createHooks({
+  islands: { Counter, TodoList },
+  SharedContextProvider: YourContextProvider, // Optional React context wrapper
+  globalStoreHandler: globalStoreHandler // Receives globals from server
+});
 ```
 
 **React (Components):**
@@ -212,7 +201,7 @@ export default createIslandsHook(
 ```jsx
 // Use your own store solution
 function MyIsland() {
-  const { theme, user } = useStore();  // Your store hook
+  const { theme, user } = useStore(); // Your store hook
 
   return (
     <div className={theme}>
