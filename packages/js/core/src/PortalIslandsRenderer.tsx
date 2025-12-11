@@ -5,11 +5,14 @@ import React, {
   forwardRef,
   memo,
   ComponentType,
+  useEffect,
 } from "react";
 import { createPortal } from "react-dom";
 import type { IslandData, IslandComponent } from "./types";
 
-interface PortalIslandsRendererProps {}
+interface PortalIslandsRendererProps {
+  onReady?: () => void;
+}
 
 export interface PortalIslandsRendererHandle {
   setRenderingEnabled: (enabled: boolean) => void;
@@ -21,13 +24,17 @@ export interface PortalIslandsRendererHandle {
 export const PortalIslandsRenderer = forwardRef<
   PortalIslandsRendererHandle,
   PortalIslandsRendererProps
->((_props, ref) => {
+>((props, ref) => {
   const [renderingEnabled, setRenderingEnabled] = useState(false);
   const [islands, setIslands] = useState<Record<string, IslandData>>({});
   const clearedElements = useRef(new Set<string>());
   const memoizedComponents = useRef(
     new Map<IslandComponent, ComponentType<any>>()
   );
+
+  useEffect(() => {
+    props.onReady?.();
+  }, []);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -82,7 +89,12 @@ export const PortalIslandsRenderer = forwardRef<
           const MemoizedComponent = memoizedComponents.current.get(Component)!;
 
           return createPortal(
-            <MemoizedComponent key={id} {...props} id={id} pushEvent={pushEvent} />,
+            <MemoizedComponent
+              key={id}
+              {...props}
+              id={id}
+              pushEvent={pushEvent}
+            />,
             el
           );
         }
