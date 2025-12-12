@@ -8,8 +8,20 @@
       LiveReactIslands Vite Example
     </.live_title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href={~p"/assets/main.css"} />
-    <script type="module" src={~p"/assets/main.js"}></script>
+    <%= if css = vite_css_entry() do %>
+      <link rel="stylesheet" href={css} />
+    <% end %>
+    <%= if Application.get_env(:vite_example, :dev_routes, false) do %>
+      <script type="module">
+        import RefreshRuntime from 'http://localhost:5173/@react-refresh'
+        RefreshRuntime.injectIntoGlobalHook(window)
+        window.$RefreshReg$ = () => {}
+        window.$RefreshSig$ = () => (type) => type
+        window.__vite_plugin_react_preamble_installed__ = true
+      </script>
+      <script type="module" src="http://localhost:5173/@vite/client"></script>
+    <% end %>
+    <script type="module" src={vite_js_entry()}></script>
   </head>
   <body>
     <%= @inner_content %>

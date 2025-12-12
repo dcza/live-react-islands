@@ -65,6 +65,33 @@ defmodule ViteExampleWeb do
       alias Phoenix.LiveView.JS
 
       unquote(verified_routes())
+
+      # Helpers to load assets from Vite dev server in dev, built files in prod
+      def vite_client_script do
+        if Application.get_env(:vite_example, :dev_routes, false) do
+          "http://localhost:5173/@vite/client"
+        else
+          nil
+        end
+      end
+
+      def vite_js_entry do
+        if Application.get_env(:vite_example, :dev_routes, false) do
+          "http://localhost:5173/src/main.jsx"
+        else
+          ~p"/assets/main.js"
+        end
+      end
+
+      def vite_css_entry do
+        if Application.get_env(:vite_example, :dev_routes, false) do
+          # Load CSS directly from Vite dev server to avoid FOUC
+          # ?direct param tells Vite to return raw CSS instead of JS module
+          "http://localhost:5173/src/index.css?direct"
+        else
+          ~p"/assets/main.css"
+        end
+      end
     end
   end
 

@@ -15,7 +15,7 @@ defmodule ViteExample.MixProject do
   def application do
     [
       mod: {ViteExample.Application, []},
-      extra_applications: [:logger, :live_react_islands_ssr_deno]
+      extra_applications: [:logger]
     ]
   end
 
@@ -31,7 +31,10 @@ defmodule ViteExample.MixProject do
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.5"},
       {:live_react_islands, path: "../../packages/elixir/live_react_islands"},
-      {:live_react_islands_ssr_deno, path: "../../packages/elixir/live_react_islands_ssr_deno"}
+      {:live_react_islands_ssr_deno,
+       path: "../../packages/elixir/live_react_islands_ssr_deno", only: [:test, :prod]},
+      {:live_react_islands_ssr_vite,
+       path: "../../packages/elixir/live_react_islands_ssr_vite", only: :dev}
     ]
   end
 end
