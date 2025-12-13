@@ -17,5 +17,6 @@ defmodule ViteExampleWeb.Router do
     live("/patch", DemoLive)
     live("/push-navigate", PushNavigateLive)
     live("/navigate", NavigateLive)
+    live("/ssr", SSRDemoLive)
   end
 end

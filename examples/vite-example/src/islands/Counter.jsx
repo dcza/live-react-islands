@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const Counter = ({ id, pushEvent, count = 0 }) => {
+const Counter = ({ id, pushEvent, count, title }) => {
   console.log("Rendering Island: ", id);
 
   const [localCount, setLocalCount] = useState(0);
@@ -26,7 +26,7 @@ const Counter = ({ id, pushEvent, count = 0 }) => {
             </div>
             <div>
               <h4 className="text-left font-medium text-gray-800 text-xs">
-                Counter Island
+                {title}
               </h4>
               <p className="text-xs text-gray-600">
                 Server state in Elixir • Local state in React
