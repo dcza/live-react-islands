@@ -20,12 +20,12 @@ defmodule ViteExampleWeb.NavigateLive do
 
         <div class="my-6">
           <.live_component
-            module={ViteExampleWeb.Components.CounterIsland}
+            module={ViteExampleWeb.Components.CounterIslandSSROverwrite}
             id="navigate_island"
           />
         </div>
 
-        <.link navigate={~p"/"} class="inline-block bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+        <.link navigate={~p"/navigation"} class="inline-block bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
           Back to Home
         </.link>
       </div>

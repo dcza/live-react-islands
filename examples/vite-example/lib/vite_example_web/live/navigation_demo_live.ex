@@ -1,4 +1,4 @@
-defmodule ViteExampleWeb.DemoLive do
+defmodule ViteExampleWeb.NavigationDemoLive do
   use ViteExampleWeb, :live_view
   use LiveReactIslands.LiveView, globals: [:user]
 
@@ -46,13 +46,13 @@ defmodule ViteExampleWeb.DemoLive do
           <div class="border-b border-gray-200">
             <nav class="flex -mb-px">
               <.link
-                patch={~p"/?tab=hidden"}
+                patch={~p"/navigation?tab=hidden"}
                 class={"px-6 py-3 text-sm font-medium border-b-2 transition-colors " <> if @tab == "hidden", do: "border-purple-600 text-purple-600", else: "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}
               >
                 Hidden
               </.link>
               <.link
-                patch={~p"/?tab=unmounted"}
+                patch={~p"/navigation?tab=unmounted"}
                 class={"px-6 py-3 text-sm font-medium border-b-2 transition-colors " <> if @tab == "unmounted", do: "border-purple-600 text-purple-600", else: "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}
               >
                 Unmounted
@@ -63,14 +63,16 @@ defmodule ViteExampleWeb.DemoLive do
           <div class="bg-gray-50 p-4 rounded mb-4">
             <div style={"display: #{if @tab == "hidden", do: "block", else: "none"}"}>
               <.live_component
-                module={ViteExampleWeb.Components.CounterIsland}
+                module={ViteExampleWeb.Components.CounterIslandSSROverwrite}
+                title="Counter Island (Hidden)"
                 id="hidden_island"
               />
             </div>
             <%= case @tab do %>
               <% "unmounted" -> %>
                 <.live_component
-                  module={ViteExampleWeb.Components.CounterIsland}
+                  module={ViteExampleWeb.Components.CounterIslandSSROverwrite}
+                  title="Counter Island (Unmounted)"
                   id="unmounted_island"
                 />
               <% _ -> %> <!-- For home tab, content is already rendered above -->

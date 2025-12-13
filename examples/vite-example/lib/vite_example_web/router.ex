@@ -13,8 +13,7 @@ defmodule ViteExampleWeb.Router do
   scope "/", ViteExampleWeb do
     pipe_through(:browser)
 
-    live("/", DemoLive)
-    live("/patch", DemoLive)
+    live("/navigation", NavigationDemoLive)
     live("/push-navigate", PushNavigateLive)
     live("/navigate", NavigateLive)
     live("/ssr", SSRDemoLive)
