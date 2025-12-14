@@ -226,7 +226,7 @@ The library is **store-agnostic** - you provide the handler to integrate with yo
 
 ### Server-Side Rendering (SSR)
 
-LiveReactIslands supports SSR for all major JavaScript runtimes (Deno, Node, Bun).
+LiveReactIslands supports SSR with strategy-aware rendering for optimal performance. The system automatically chooses between `renderToString` (with React hydration markers) or `renderToStaticMarkup` (clean HTML) based on your strategy.
 
 **1. Create an islands index file (if you haven't already):**
 
@@ -254,32 +254,41 @@ const liveSocket = new LiveSocket("/live", Socket, {
 liveSocket.connect();
 ```
 
-**3. Server entry point (Deno/Node/Bun):**
+**3. Server entry point (SSR module):**
 
 ```javascript
-// ssr.js (for Deno, Node, or Bun)
-import { exposeSSR } from "@live-react-islands/core";
-import * as islands from "./islands"; // Same islands!
+// ssr.js (works with Deno, Node, Bun, or any JS runtime)
+import { exposeSSR } from "@live-react-islands/core/ssr";
+import * as islands from "./islands"; // Same islands map!
 
+// Optional: provide a context provider and global state handler
 const ContextProvider = ({ children }) => children;
+const onHydrateLiveStore = (globalState) => console.log(globalState);
 
-const { renderSSRIslandStatic } = exposeSSR(
-  islands,
-  ContextProvider,
-  (globalState) => console.log(globalState) // Optional
-);
-
-// Export for Deno/Node to call
-export { renderSSRIslandStatic };
+exposeSSR(islands, ContextProvider, onHydrateLiveStore);
 ```
 
-> **Note:** Both client and server import from the same `./islands` file, ensuring they stay in sync automatically!
+> **Note:** Both client and server import from the same `./islands` file, ensuring they stay in sync automatically! The `exposeSSR` function sets up a global `SSR_MODULE` object that the Elixir renderer calls.
 
-**4. Configure SSR in Elixir:**
+**4. Configure SSR Backend:**
 
+Choose a backend based on your environment:
+
+**For Development (Vite):**
 ```elixir
-# config/config.exs
-config :your_app, LiveReactIslands,
+# config/dev.exs
+config :live_react_islands,
+  ssr_renderer: LiveReactIslands.SSR.ViteRenderer
+```
+
+**For Production (Deno):**
+```elixir
+# config/prod.exs
+config :live_react_islands,
+  ssr_renderer: LiveReactIslands.SSR.DenoRenderer
+
+# Also configure the path to your built SSR bundle
+config :live_react_islands_ssr_deno,
   main_module_path: "priv/static/assets/ssr.js"
 ```
 
@@ -289,18 +298,70 @@ config :your_app, LiveReactIslands,
 defmodule MyAppWeb.Components.CounterIsland do
   use LiveReactIslands.Component,
     component: "Counter",
-    props: %{count: 0},
-    ssr_strategy: :overwrite  # or :hydrate_root
+    props: %{count: 0, title: "My Counter"},
+    ssr_strategy: :hydrate_root  # or :overwrite, :none
 end
 ```
 
-**SSR Strategies:**
+### SSR Strategies
 
-- `:none` - No SSR (default), React hydrates on an empty container
-- `:overwrite` - SSR renders a preview, React replaces it on mount
-- `:hydrate_root` - SSR renders the component, React hydrates the existing DOM
+LiveReactIslands supports three SSR strategies, each optimized for different use cases:
 
-The SSR code is **runtime-agnostic** - the same code works in Deno, Node, Bun, or any JavaScript runtime.
+#### `:none` (Default)
+- **Client:** React mounts on empty container
+- **Server:** No SSR, just `<!-- React renders here -->`
+- **Use case:** Client-only components, no SEO needed
+
+#### `:overwrite`
+- **Client:** React completely replaces server HTML with `createRoot`
+- **Server:** Uses `renderToStaticMarkup` (clean HTML, smaller payload)
+- **Props:** Embedded in `data-props` attribute, available immediately
+- **Use case:** SEO preview without strict hydration, simpler debugging
+
+#### `:hydrate_root`
+- **Client:** React hydrates existing DOM with `hydrateRoot`
+- **Server:** Uses `renderToString` (includes React markers like `<!-- -->` comments)
+- **Props:** Embedded in `data-props` attribute, available at hydration time
+- **Use case:** Fastest perceived load, full interactivity after hydration
+
+### How Props Work
+
+Props are **automatically embedded** in the HTML as a `data-props` attribute:
+
+```html
+<div id="counter" data-props='{"count":0,"title":"My Counter"}'>
+  <!-- SSR content here -->
+</div>
+```
+
+The client reads this attribute at mount time, ensuring props are available **synchronously** without waiting for LiveView events. This solves the hydration timing problem where props would arrive after React tried to hydrate.
+
+### Hydration Requirements
+
+When using `:hydrate_root`, the server and client must render **identical output**. React's hydration is strict about matching:
+
+✅ **Works:**
+```jsx
+<div>Count: {count}</div>
+<div>{`#${id}`}</div>
+```
+
+❌ **Hydration mismatch:**
+```jsx
+<div>#{id}</div>  // Creates adjacent text nodes that collapse differently
+```
+
+**Why?** `renderToString` adds HTML comment markers (`<!-- -->`) between adjacent text nodes to preserve boundaries. Use template literals or string concatenation to create single text nodes for reliable hydration.
+
+### Runtime Flexibility
+
+The SSR system is **runtime-agnostic**. The same JavaScript code works with:
+- **Vite Dev Server** (development with HMR)
+- **Deno** (production, fast startup)
+- **Node.js** (if you prefer)
+- **Bun** (fastest runtime)
+
+Just configure the appropriate renderer in your Elixir config.
 
 ## Development
 
