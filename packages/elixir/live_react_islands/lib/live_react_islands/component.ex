@@ -36,19 +36,23 @@ defmodule LiveReactIslands.Component do
             Map.put(acc, k, Process.get({:global, k}))
           end)
 
+        props_json = Jason.encode!(props)
+
         staticHTML =
-          if @ssr_strategy == :overwrite do
+          if @ssr_strategy == :none do
+            "<!-- React renders here -->"
+          else
             case Application.get_env(:live_react_islands, :ssr_renderer) do
               nil ->
                 raise """
-                SSR strategy is :overwrite but no :ssr_renderer configured.
+                SSR strategy is :overwrite or :hydrate_root but no :ssr_renderer configured.
 
-                Add to your config/config.exs:
+                Add to your config/dev.exs:
 
                     config :live_react_islands,
                       ssr_renderer: LiveReactIslands.SSR.ViteRenderer
 
-                Or for production:
+                Or for config/prod.exs:
 
                     config :live_react_islands,
                       ssr_renderer: LiveReactIslands.SSR.DenoRenderer
@@ -59,7 +63,8 @@ defmodule LiveReactIslands.Component do
                        component_name,
                        assigns.id,
                        props,
-                       globals
+                       globals,
+                       @ssr_strategy
                      ) do
                   {:ok, html} ->
                     html
@@ -71,19 +76,15 @@ defmodule LiveReactIslands.Component do
                       "SSR failed for #{component_name}: #{inspect(reason)} - falling back to client-side rendering"
                     )
 
-                    "<!-- SSR failed: #{inspect(reason)}, React will render client-side -->"
+                    "<!-- SSR failed, React will render client-side -->"
                 end
             end
-          else
-            "<!-- React renders here -->"
           end
 
         %Phoenix.LiveView.Rendered{
           static: [
             """
-            <div id="#{assigns.id}" phx-hook="LiveReactIslands" phx-update="ignore" data-comp="#{component_name}" data-ssr="#{@ssr_strategy}">
-              #{staticHTML}
-            </div>
+            <div id="#{assigns.id}" phx-hook="LiveReactIslands" phx-update="ignore" data-comp="#{component_name}" data-ssr="#{@ssr_strategy}" data-props="#{Phoenix.HTML.Engine.html_escape(props_json)}">#{staticHTML}</div>
             """
           ],
           dynamic: fn _ -> [] end,
@@ -166,8 +167,8 @@ defmodule LiveReactIslands.Component do
                       end
 
                     if Map.has_key?(prop_defs, prop_key) do
-                      {:ok, changed_socket} = handle_assign(acc, prop_key, value)
-                      changed_socket
+                      # Initial mount - just assign, no push (props in data-props)
+                      assign(acc, prop_key, value)
                     else
                       raise ArgumentError,
                             "Unknown init prop `#{key}` - `#{prop_key_string}` is not defined in props"
@@ -178,13 +179,11 @@ defmodule LiveReactIslands.Component do
                     external_owned = MapSet.put(acc.assigns.__external_owned, key)
                     internal_owned = MapSet.delete(acc.assigns.__internal_owned, key)
 
-                    acc =
-                      acc
-                      |> assign(:__external_owned, external_owned)
-                      |> assign(:__internal_owned, internal_owned)
-
-                    {:ok, changed_socket} = handle_assign(acc, key, value, allowed_to_push: true)
-                    changed_socket
+                    acc
+                    |> assign(:__external_owned, external_owned)
+                    |> assign(:__internal_owned, internal_owned)
+                    |> assign(key, value)
+                    # Initial mount - no push, props already in data-props
 
                   true ->
                     {:ok, changed_socket} = handle_assign(acc, key, value)
@@ -212,8 +211,8 @@ defmodule LiveReactIslands.Component do
                     acc
 
                   true ->
-                    {:ok, changed_socket} = handle_assign(acc, prop_key, default_value)
-                    changed_socket
+                    # Initial mount - just assign default, no push
+                    assign(acc, prop_key, default_value)
                 end
               end)
 

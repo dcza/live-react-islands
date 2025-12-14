@@ -32,6 +32,7 @@ defmodule LiveReactIslands.SSR.Renderer do
   - id: Unique identifier for this island instance
   - props: Map of props to pass to the component
   - global_state: Map of global state shared across islands
+  - strategy: SSR strategy (:overwrite or :hydrate_root)
 
   ## Returns
   - {:ok, html_string} on success
@@ -41,7 +42,8 @@ defmodule LiveReactIslands.SSR.Renderer do
               component_name :: String.t(),
               id :: String.t(),
               props :: map(),
-              global_state :: map()
+              global_state :: map(),
+              strategy :: atom()
             ) :: {:ok, String.t()} | {:error, term()}
 
   @doc """

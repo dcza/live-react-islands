@@ -6,8 +6,11 @@ import type {
   IslandData,
   SharedIslandsRendererComponent,
   SharedIslandsRendererHandle,
+  IndividualIslandsRendererComponent,
+  IndividualIslandsRendererHandle,
 } from "./types";
 import { PortalIslandsRenderer } from "./PortalIslandsRenderer";
+import { IndividualIslandRenderer } from "./IndividualIslandRenderer";
 
 // Constant root ID - one shared root per application
 export const SHARED_ROOT_ID = "__live_react_islands_shared_root__";
@@ -29,7 +32,11 @@ export interface Manager {
     SharedContextProvider: ContextProviderComponent;
     SharedIslandsRenderer?: SharedIslandsRendererComponent;
   }) => ManagerState;
-  mountIsland: (state: ManagerState, data: IslandData) => ManagerState;
+  mountIsland: (
+    state: ManagerState,
+    data: IslandData,
+    IslandRenderer?: IndividualIslandsRendererComponent
+  ) => ManagerState;
   unmountIsland: (state: ManagerState, id: string) => ManagerState;
   updateIslandProps: (
     state: ManagerState,
@@ -64,13 +71,41 @@ const flushPendingIslands = (state: ManagerState): void => {
   state.pendingSharedIslands = [];
 };
 
-const mountSharedIsland = (state: ManagerState, data: IslandData): void => {
+const mountSharedIsland = (
+  state: ManagerState,
+  data: IslandData
+): ManagerState => {
   if (state.sharedRendererRef.current) {
     state.sharedRendererRef.current.addIsland(data);
   } else {
     console.log(`[Island(${data.id})] Queueing until renderer ready`);
     state.pendingSharedIslands.push(data);
   }
+  return state;
+};
+
+const mountIndividualIsland = (
+  state: ManagerState,
+  data: IslandData,
+  IslandRenderer: IndividualIslandsRendererComponent
+): ManagerState => {
+  const rendererRef = React.createRef<IndividualIslandsRendererHandle>();
+  // TODO: Need to wait for globals before hydration
+  const root = ReactDOM.hydrateRoot(
+    data.el,
+    React.createElement(IslandRenderer, {
+      ref: rendererRef,
+      data,
+    })
+  );
+  return {
+    ...state,
+    roots: { ...state.roots, [data.id]: root },
+    individualRendererRefs: {
+      ...state.individualRendererRefs,
+      [data.id]: rendererRef,
+    },
+  };
 };
 
 // ============================================================================
@@ -112,19 +147,14 @@ const ManagerObj: Manager = {
   },
   enableRendering: (state) => {
     state.sharedRendererRef.current?.setRenderingEnabled(true);
-    Object.keys(state.individualRendererRefs).forEach((key) =>
-      state.individualRendererRefs[key].current?.setRenderingEnabled(true)
-    );
     return { ...state, renderingEnabled: true };
   },
-  mountIsland: (state, data) => {
+  mountIsland: (state, data, IslandRenderer = IndividualIslandRenderer) => {
     switch (data.ssrStrategy) {
       case "hydrate_root":
-        //TODO: Create and hydrate individual root
-        return state;
+        return mountIndividualIsland(state, data, IslandRenderer);
       default:
-        mountSharedIsland(state, data);
-        return state;
+        return mountSharedIsland(state, data);
     }
   },
   updateIslandProps: (state, id, props) => {

@@ -38,10 +38,10 @@ defmodule LiveReactIslands.SSR.ViteRenderer do
   end
 
   @impl true
-  def render_component(component_name, id, props, global_state) do
+  def render_component(component_name, id, props, global_state, strategy) do
     GenServer.call(
       __MODULE__,
-      {:render_component, component_name, id, props, global_state},
+      {:render_component, component_name, id, props, global_state, strategy},
       @default_timeout + 1000
     )
   end
@@ -88,17 +88,25 @@ defmodule LiveReactIslands.SSR.ViteRenderer do
 
   @impl true
   def handle_call(
-        {:render_component, component_name, id, props, global_state},
+        {:render_component, component_name, id, props, global_state, strategy},
         _from,
         state
       ) do
     url = "#{state.vite_url}/__ssr"
 
+    js_strategy =
+      case strategy do
+        :hydrate_root -> "hydrate_root"
+        :overwrite -> "overwrite"
+        _ -> "overwrite"
+      end
+
     body = %{
       component: component_name,
       id: id,
       props: props,
-      globals: global_state
+      globals: global_state,
+      strategy: js_strategy
     }
 
     result =

@@ -1,5 +1,5 @@
 import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToString, renderToStaticMarkup } from "react-dom/server";
 import type { IslandsMap, ContextProviderComponent } from "./types";
 
 /**
@@ -17,7 +17,7 @@ export function exposeSSR(
   SharedContextProvider: ContextProviderComponent = ({ children }) => children,
   onHydrateLiveStore?: (data: any) => void
 ) {
-  const makeRenderSSRIslandStatic =
+  const makeRenderer = (renderFn: typeof renderToString | typeof renderToStaticMarkup) =>
     (IslandComponent: any) =>
     (id: string, props: Record<string, any> = {}, globalState: any = {}) => {
       // Call handler if provided
@@ -25,7 +25,7 @@ export function exposeSSR(
         onHydrateLiveStore(globalState);
       }
 
-      return renderToStaticMarkup(
+      return renderFn(
         React.createElement(
           SharedContextProvider,
           null,
@@ -46,23 +46,34 @@ export function exposeSSR(
     return config.Component;
   };
 
-  // Create individual renderers for each component
-  const renderers = Object.fromEntries(
+  // Create renderers for both strategies
+  // - renderToString: For hydrate_root (includes React markers for hydration)
+  // - renderToStaticMarkup: For overwrite (clean HTML, smaller size)
+  const hydrateRenderers = Object.fromEntries(
     Object.entries(islands).map(([key, config]) => [
       key,
-      makeRenderSSRIslandStatic(extractComponent(config)),
+      makeRenderer(renderToString)(extractComponent(config)),
     ])
   );
 
-  // Main render function that looks up the appropriate renderer
-  const renderSSRIslandStatic = (
+  const overwriteRenderers = Object.fromEntries(
+    Object.entries(islands).map(([key, config]) => [
+      key,
+      makeRenderer(renderToStaticMarkup)(extractComponent(config)),
+    ])
+  );
+
+  // Main render function that chooses renderer based on strategy
+  const renderSSRIsland = (
     key: string,
     id: string,
     props: Record<string, any> = {},
-    globalState: any = {}
+    globalState: any = {},
+    strategy: "hydrate_root" | "overwrite" = "overwrite"
   ): string => {
+    const renderers = strategy === "hydrate_root" ? hydrateRenderers : overwriteRenderers;
     if (!renderers[key]) {
-      throw new Error(`No static renderer found for Component "${key}"`);
+      throw new Error(`No SSR renderer found for Component "${key}"`);
     }
     return renderers[key](id, props, globalState);
   };
@@ -76,5 +87,10 @@ export function exposeSSR(
   };
 
   const universalGlobal = getGlobal();
-  universalGlobal.SSR_MODULE = { renderSSRIslandStatic, renderers };
+  //@ts-ignore
+  universalGlobal.SSR_MODULE = {
+    renderSSRIsland,
+    hydrateRenderers,
+    overwriteRenderers
+  };
 }

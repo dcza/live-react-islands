@@ -2,6 +2,7 @@
   "name": "@live-react-islands/core",
   "version": "0.1.0",
   "description": "Core React integration for LiveReactIslands - Phoenix LiveView hook and utilities",
+  "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "exports": {

@@ -114,12 +114,28 @@ export function createHooks({
       }
 
       // Handle mount logic
-      const { comp: componentName, ssr: ssrData } = this.el.dataset;
+      const {
+        comp: componentName,
+        ssr: ssrData,
+        props: propsData,
+      } = this.el.dataset;
       if (!componentName) {
         console.error(
           `[LiveReactIslands] Element '${this.el.id}' missing data-comp attribute`
         );
         return;
+      }
+
+      let initialProps: Record<string, any> = {};
+      if (propsData) {
+        try {
+          initialProps = JSON.parse(propsData);
+        } catch (e) {
+          console.error(
+            `[Island(${this.el.id})] Failed to parse data-props:`,
+            e
+          );
+        }
       }
 
       const islandConfig = extractIslandConfig(
@@ -155,7 +171,7 @@ export function createHooks({
         ContextProvider: islandConfig.ContextProvider,
         ssrStrategy,
         pushEvent,
-        props: {},
+        props: initialProps,
       });
 
       // Setup prop update handler

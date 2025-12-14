@@ -20,14 +20,16 @@ interface SSRRequest {
   id: string;
   props: Record<string, any>;
   globals: Record<string, any>;
+  strategy?: "hydrate_root" | "overwrite";
 }
 
 interface SSRModule {
-  renderSSRIslandStatic: (
+  renderSSRIsland: (
     component: string,
     id: string,
     props: Record<string, any>,
-    globals: Record<string, any>
+    globals: Record<string, any>,
+    strategy: "hydrate_root" | "overwrite"
   ) => string;
 }
 
@@ -78,7 +80,7 @@ export default function liveReactIslandsSSR(
           }
           const body = JSON.parse(Buffer.concat(chunks).toString());
 
-          const { component, id, props, globals } = body as SSRRequest;
+          const { component, id, props, globals, strategy } = body as SSRRequest;
 
           // Validate request
           if (!component || !id) {
@@ -101,7 +103,7 @@ export default function liveReactIslandsSSR(
             | SSRModule
             | undefined;
 
-          if (!ssrModule || !ssrModule.renderSSRIslandStatic) {
+          if (!ssrModule || !ssrModule.renderSSRIsland) {
             res.statusCode = 500;
             res.setHeader("Content-Type", "application/json");
             res.end(
@@ -112,12 +114,13 @@ export default function liveReactIslandsSSR(
             return;
           }
 
-          // Render the component
-          const html = ssrModule.renderSSRIslandStatic(
+          // Render the component using strategy-aware function
+          const html = ssrModule.renderSSRIsland(
             component,
             id,
             props || {},
-            globals || {}
+            globals || {},
+            strategy || "overwrite"
           );
 
           // Return the rendered HTML

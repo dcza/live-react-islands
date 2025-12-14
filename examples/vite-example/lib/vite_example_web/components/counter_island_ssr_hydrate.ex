@@ -4,7 +4,7 @@ defmodule ViteExampleWeb.Components.CounterIslandSSRHydrate do
     component: "Counter",
     # Only props defined here will get pushed down to React
     props: %{title: "Counter Island (Hydrate SSR)", count: 0},
-    ssr_strategy: :hydrate
+    ssr_strategy: :hydrate_root
 
   def handle_event("increment", _params, socket) do
     new_count = socket.assigns.count + 1

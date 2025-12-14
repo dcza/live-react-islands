@@ -19,10 +19,10 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   end
 
   @impl true
-  def render_component(component_name, id, props, global_state) do
+  def render_component(component_name, id, props, global_state, strategy) do
     GenServer.call(
       __MODULE__,
-      {:render_component, component_name, id, props, global_state},
+      {:render_component, component_name, id, props, global_state, strategy},
       @default_timeout
     )
   end
@@ -67,13 +67,25 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   end
 
   @impl true
-  def handle_call({:render_component, component_name, id, props, global_state}, _from, state) do
+  def handle_call(
+        {:render_component, component_name, id, props, global_state, strategy},
+        _from,
+        state
+      ) do
+    js_strategy =
+      case strategy do
+        :hydrate_root -> "hydrate_root"
+        :overwrite -> "overwrite"
+        _ -> "overwrite"
+      end
+
     render_script = """
-      SSR_MODULE.renderSSRIslandStatic(
+      SSR_MODULE.renderSSRIsland(
         #{Jason.encode!(component_name)},
         #{Jason.encode!(id)},
         #{Jason.encode!(props)},
-        #{Jason.encode!(global_state)}
+        #{Jason.encode!(global_state)},
+        #{Jason.encode!(js_strategy)}
       );
     """
 

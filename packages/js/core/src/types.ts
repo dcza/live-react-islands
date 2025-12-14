@@ -34,14 +34,24 @@ export interface IslandData {
 export interface SharedIslandsRendererProps {
   onReady?: () => void;
 }
-
 export interface SharedIslandsRendererHandle {
   setRenderingEnabled: (enabled: boolean) => void;
   addIsland: (data: IslandData) => void;
   updateIsland: (id: string, props: Record<string, any>) => void;
   removeIsland: (id: string) => void;
 }
-
 export type SharedIslandsRendererComponent = React.ForwardRefExoticComponent<
   SharedIslandsRendererProps & React.RefAttributes<SharedIslandsRendererHandle>
 >;
+
+export interface IndividualIslandsRendererProps {
+  data: IslandData;
+}
+export interface IndividualIslandsRendererHandle {
+  update: (props: Record<string, any>) => void;
+}
+export type IndividualIslandsRendererComponent =
+  React.ForwardRefExoticComponent<
+    IndividualIslandsRendererProps &
+      React.RefAttributes<IndividualIslandsRendererHandle>
+  >;

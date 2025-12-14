@@ -1,24 +1,25 @@
-import React, { ComponentType } from "react";
-import type { IslandComponent, PushEventFn } from "./types";
+import React, { forwardRef, useImperativeHandle, useState } from "react";
+import type {
+  IndividualIslandsRendererHandle,
+  IndividualIslandsRendererProps,
+} from "./types";
 
-// ============================================================================
-// Individual Island Renderer (wraps component with context for individual roots)
-// ============================================================================
+export const IndividualIslandRenderer = forwardRef<
+  IndividualIslandsRendererHandle,
+  IndividualIslandsRendererProps
+>(({ data }, ref) => {
+  const { Component, ContextProvider, id, pushEvent } = data;
+  const [props, setProps] = useState(data.props);
 
-interface IndividualIslandRendererProps {
-  Component: IslandComponent;
-  props: Record<string, any>;
-  id: string;
-  pushEvent: PushEventFn;
-  ContextProvider: ComponentType<{ children: React.ReactNode }>;
-}
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    update: (p) => setProps((prev) => ({ ...prev, ...p })),
+  }));
 
-export const IndividualIslandRenderer: React.FC<
-  IndividualIslandRendererProps
-> = ({ Component, props, id, pushEvent, ContextProvider }) => {
-  return (
-    <ContextProvider>
-      <Component {...props} id={id} pushEvent={pushEvent} />
-    </ContextProvider>
+  const islandNode = <Component {...props} id={id} pushEvent={pushEvent} />;
+  return ContextProvider ? (
+    <ContextProvider>{islandNode}</ContextProvider>
+  ) : (
+    islandNode
   );
-};
+});
