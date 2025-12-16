@@ -165,7 +165,7 @@ Share state across islands by providing a global store handler when creating the
 ```elixir
 defmodule MyLiveView do
   use MyAppWeb, :live_view
-  use LiveReactIslands.LiveView, globals: [:theme, :user]
+  use LiveReactIslands.LiveView, expose_globals: [:theme, :user]
 
   def mount(_params, _session, socket) do
     socket = socket

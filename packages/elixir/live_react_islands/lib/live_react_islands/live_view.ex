@@ -1,6 +1,6 @@
 defmodule LiveReactIslands.LiveView do
   defmacro __using__(opts) do
-    global_keys = Keyword.get(opts, :globals, [])
+    global_keys = Keyword.get(opts, :expose_globals, [])
 
     quote do
       import Phoenix.Component, except: [assign: 2, assign: 3]

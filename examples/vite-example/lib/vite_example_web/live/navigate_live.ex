@@ -1,6 +1,6 @@
 defmodule ViteExampleWeb.NavigateLive do
   use ViteExampleWeb, :live_view
-  use LiveReactIslands.LiveView, globals: [:user]
+  use LiveReactIslands.LiveView, expose_globals: [:user]
 
   def mount(_params, _session, socket) do
     socket = assign(socket, user: %{name: "Bob Johnson", email: "bob@example.com"})
