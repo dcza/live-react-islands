@@ -18,34 +18,6 @@
 - **Single React Root**: Efficient resource usage with React portals
 - **TypeScript Support**: Full type definitions for the React package
 
-## Architecture
-
-LiveReactIslands provides a bridge between Phoenix LiveView (Elixir backend) and React (JavaScript frontend):
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                      Phoenix LiveView                          │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
-│  │ LiveComponent    │  │ LiveComponent    │  │ LiveComponent│  │
-│  │ (Counter)        │  │ (TodoList)       │  │ (MyIsland)   │  │
-│  └────────┬─────────┘  └────────┬─────────┘  └──────┬───────┘  │
-│           │ props ↓             │                   │          │
-│           │ events ↑            │                   │          │
-└───────────┼─────────────────────┼───────────────────┼──────────┘
-            │                     │                   │
-            ▼                     ▼                   ▼
-  ┌─────────────────────────────────────────────────────────────┐
-  │              LiveView Hook (JavaScript)                     │
-  │  ┌──────────────────────────────────────────────────────┐   │
-  │  │          Single React Root (createRoot)              │   │
-  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │   │
-  │  │  │   Portal    │  │   Portal    │  │   Portal    │   │   │
-  │  │  │  <Counter>  │  │  <TodoList> │  │  <MyIsland> │   │   │
-  │  │  └─────────────┘  └─────────────┘  └─────────────┘   │   │
-  │  └──────────────────────────────────────────────────────┘   │
-  └─────────────────────────────────────────────────────────────┘
-```
-
 ## Packages
 
 This monorepo contains:
@@ -158,7 +130,7 @@ function MyComponent({ pushEvent }) {
 
 ### Global State
 
-Share state across islands by providing a global store handler when creating the hook.
+Share state across islands by declaring globals in your LiveView and requesting them in your island components.
 
 **Elixir (LiveView):**
 
@@ -177,27 +149,32 @@ defmodule MyLiveView do
 end
 ```
 
-**JavaScript (Client Setup):**
+**Elixir (Island Component):**
 
-```javascript
-import { createHooks } from "@live-react-islands/core";
-import * as islands from "./islands"; // Import from islands/index.js
-import { createStore } from "zustand/vanilla"; // or any store library
-
-// Create your store (store-agnostic)
-const store = createStore((set) => ({ theme: "light", user: null }));
-
-// Handler receives global updates from LiveView
-const globalStoreHandler = (globals) => {
-  store.setState(globals);
-};
-
-const hooks = createHooks({
-  islands,
-  SharedContextProvider: YourContextProvider, // Optional React context wrapper
-  globalStoreHandler: globalStoreHandler, // Receives globals from server
-});
+```elixir
+defmodule MyAppWeb.Components.ThemedCounter do
+  use LiveReactIslands.Component,
+    component: "ThemedCounter",
+    props: %{count: 0},
+    globals: [:theme, :user]  # Request globals you need
+end
 ```
+
+**React (Component):**
+
+```jsx
+// Globals are injected as props automatically
+function ThemedCounter({ theme, user, count, pushEvent }) {
+  return (
+    <div className={theme}>
+      <p>Welcome, {user.name}!</p>
+      <p>Count: {count}</p>
+    </div>
+  );
+}
+```
+
+When globals change in LiveView, all islands that requested those globals will automatically re-render with the new values.
 
 > **Best Practice:** Create an `islands/index.js` file that exports all your islands. This ensures your client and server use the same island map and stay in sync:
 >
@@ -207,22 +184,27 @@ const hooks = createHooks({
 > export { default as TodoList } from "./TodoList";
 > ```
 
-**React (Components):**
+**Optional: Use with your own state management:**
+
+If you want to sync globals to a Zustand/Redux store, you can do so with `useEffect`:
 
 ```jsx
-// Use your own store solution
-function MyIsland() {
-  const { theme, user } = useStore(); // Your store hook
+function MyIsland({ theme, user, count }) {
+  const store = useStore();
+
+  // Sync globals to your store if needed
+  useEffect(() => {
+    store.setState({ theme, user });
+  }, [theme, user]);
 
   return (
     <div className={theme}>
-      <h1>Welcome, {user.name}!</h1>
+      <p>Welcome, {user.name}!</p>
+      <p>Count: {count}</p>
     </div>
   );
 }
 ```
-
-The library is **store-agnostic** - you provide the handler to integrate with your preferred state management solution (Zustand, Redux, Context, etc.).
 
 ### Server-Side Rendering (SSR)
 
@@ -275,6 +257,7 @@ exposeSSR(islands, ContextProvider, onHydrateLiveStore);
 Choose a backend based on your environment:
 
 **For Development (Vite):**
+
 ```elixir
 # config/dev.exs
 config :live_react_islands,
@@ -282,6 +265,7 @@ config :live_react_islands,
 ```
 
 **For Production (Deno):**
+
 ```elixir
 # config/prod.exs
 config :live_react_islands,
@@ -308,17 +292,20 @@ end
 LiveReactIslands supports three SSR strategies, each optimized for different use cases:
 
 #### `:none` (Default)
+
 - **Client:** React mounts on empty container
 - **Server:** No SSR, just `<!-- React renders here -->`
 - **Use case:** Client-only components, no SEO needed
 
 #### `:overwrite`
+
 - **Client:** React completely replaces server HTML with `createRoot`
 - **Server:** Uses `renderToStaticMarkup` (clean HTML, smaller payload)
 - **Props:** Embedded in `data-props` attribute, available immediately
 - **Use case:** SEO preview without strict hydration, simpler debugging
 
 #### `:hydrate_root`
+
 - **Client:** React hydrates existing DOM with `hydrateRoot`
 - **Server:** Uses `renderToString` (includes React markers like `<!-- -->` comments)
 - **Props:** Embedded in `data-props` attribute, available at hydration time
@@ -341,14 +328,16 @@ The client reads this attribute at mount time, ensuring props are available **sy
 When using `:hydrate_root`, the server and client must render **identical output**. React's hydration is strict about matching:
 
 ✅ **Works:**
+
 ```jsx
 <div>Count: {count}</div>
 <div>{`#${id}`}</div>
 ```
 
 ❌ **Hydration mismatch:**
+
 ```jsx
-<div>#{id}</div>  // Creates adjacent text nodes that collapse differently
+<div>#{id}</div> // Creates adjacent text nodes that collapse differently
 ```
 
 **Why?** `renderToString` adds HTML comment markers (`<!-- -->`) between adjacent text nodes to preserve boundaries. Use template literals or string concatenation to create single text nodes for reliable hydration.
@@ -356,6 +345,7 @@ When using `:hydrate_root`, the server and client must render **identical output
 ### Runtime Flexibility
 
 The SSR system is **runtime-agnostic**. The same JavaScript code works with:
+
 - **Vite Dev Server** (development with HMR)
 - **Deno** (production, fast startup)
 - **Node.js** (if you prefer)
