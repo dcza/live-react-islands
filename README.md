@@ -336,18 +336,6 @@ Tradeoffs:
 
 Use case: Large, complex islands where avoiding the initial re-render is critical
 
-### How Props Work
-
-Props are automatically embedded in the HTML as a `data-props` attribute:
-
-```html
-<div id="counter" data-props='{"count":0,"title":"My Counter"}'>
-  <!-- SSR content here -->
-</div>
-```
-
-The client reads this attribute at mount time, ensuring props are available synchronously without waiting for LiveView events.
-
 ### Runtime Flexibility
 
 The SSR system is runtime-agnostic. The same JavaScript code works with:
