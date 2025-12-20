@@ -1,8 +1,8 @@
 # LiveReactIslands
 
-> **⚠️ Work in Progress**: This project is currently under active development and is not intended for public use yet.
+Work in Progress - under active development, not intended for public use.
 
-**React Islands for Phoenix LiveView** - Embed React components in LiveView with bidirectional communication, server-side rendering, and global state management.
+React Islands for Phoenix LiveView - Embed React components in LiveView with bidirectional communication, server-side rendering, and global state management.
 
 ## Demo
 
@@ -10,30 +10,30 @@
 
 ## Features
 
-- **Seamless Integration**: Embed React components directly in Phoenix LiveView with minimal setup
-- **Bidirectional Communication**: Props flow from LiveView to React, events flow from React to LiveView
-- **Server-Side Rendering**: Optional SSR with caching for improved performance
-- **Global State Management**: Share state across multiple islands on the same page
-- **Prop Ownership Tracking**: Intelligent handling of internal vs external prop updates
-- **Single React Root**: Efficient resource usage with React portals
-- **TypeScript Support**: Full type definitions for the React package
+- Embed React components directly in Phoenix LiveView
+- Bidirectional communication - props flow from LiveView to React, events flow from React to LiveView
+- Optional server-side rendering with caching
+- Global state management across islands
+- Prop ownership tracking for internal vs external updates
+- Shared React root using portals for efficient resource usage
+- TypeScript support
 
 ## Packages
 
-This monorepo contains:
+Monorepo packages:
 
-- **`live_react_islands`** (Elixir) - Phoenix LiveView integration
-- **`@live-react-islands/core`** (JavaScript/TypeScript) - React hooks and SSR support
-- **`live_react_islands_ssr_vite`** (Elixir) - Dev mode SSR Backend using the Vite Dev Server
-- **`live_react_islands_ssr_deno`** (Elixir) - Production SSR Backend using a dedicated Deno application
-- **`examples/with-esbuild`** - Example using esbuild bundler
-- **`examples/with-vite`** - Example using Vite bundler
+- `live_react_islands` - Phoenix LiveView integration (Elixir)
+- `@live-react-islands/core` - React hooks and SSR support (JavaScript/TypeScript)
+- `live_react_islands_ssr_vite` - Dev mode SSR backend using Vite (Elixir)
+- `live_react_islands_ssr_deno` - Production SSR backend using Deno (Elixir)
+- `examples/with-esbuild` - esbuild example
+- `examples/with-vite` - Vite example
 
 ## Quick Start
 
 ### Installation
 
-**Elixir (mix.exs):**
+Elixir (mix.exs):
 
 ```elixir
 def deps do
@@ -43,26 +43,19 @@ def deps do
 end
 ```
 
-**JavaScript:**
+JavaScript:
 
 ```bash
 npm install @live-react-islands/core react react-dom
-# or
-yarn add @live-react-islands/core react react-dom
 ```
 
 ### Configuration
 
-**config/config.exs:**
-
-```elixir
-config :your_app, LiveReactIslands,
-  main_module_path: "priv/static/assets/ssr.js"
-```
+SSR configuration is optional. See the [SSR section](#server-side-rendering-ssr) for details.
 
 ### Basic Usage
 
-**1. Create a React Island Component (Elixir):**
+1. Create a React Island Component (Elixir):
 
 ```elixir
 defmodule MyAppWeb.Components.CounterIsland do
@@ -78,7 +71,7 @@ defmodule MyAppWeb.Components.CounterIsland do
 end
 ```
 
-**2. Create the React Component:**
+2. Create the React Component:
 
 ```jsx
 // assets/js/components/Counter.jsx
@@ -92,7 +85,7 @@ export default function Counter({ count, pushEvent }) {
 }
 ```
 
-**3. Use it in your LiveView:**
+3. Use it in your LiveView:
 
 ```elixir
 defmodule MyAppWeb.PageLive do
@@ -110,14 +103,14 @@ end
 
 ### Prop Ownership
 
-LiveReactIslands tracks which component "owns" each prop:
+LiveReactIslands tracks which component owns each prop:
 
-- **Internal Owned**: LiveComponent manages the prop (LiveComponent → React)
-- **External Owned**: LiveView manages the prop, passed down through LiveComponent (LiveView → LiveComponent → React)
+- Internal Owned: LiveComponent manages the prop (LiveComponent → React)
+- External Owned: LiveView manages the prop, passed down through LiveComponent (LiveView → LiveComponent → React)
 
 ### Event Communication
 
-React components receive the `pushEvent` function as a prop to send events back to the LiveComponent:
+React components receive `pushEvent` as a prop to send events to the LiveComponent:
 
 ```jsx
 function MyComponent({ pushEvent }) {
@@ -132,7 +125,7 @@ function MyComponent({ pushEvent }) {
 
 Share state across islands by declaring globals in your LiveView and requesting them in your island components.
 
-**Elixir (LiveView):**
+LiveView:
 
 ```elixir
 defmodule MyLiveView do
@@ -149,7 +142,7 @@ defmodule MyLiveView do
 end
 ```
 
-**Elixir (Island Component):**
+Island Component:
 
 ```elixir
 defmodule MyAppWeb.Components.ThemedCounter do
@@ -160,10 +153,9 @@ defmodule MyAppWeb.Components.ThemedCounter do
 end
 ```
 
-**React (Component):**
+React Component:
 
 ```jsx
-// Globals are injected as props automatically
 function ThemedCounter({ theme, user, count, pushEvent }) {
   return (
     <div className={theme}>
@@ -174,19 +166,19 @@ function ThemedCounter({ theme, user, count, pushEvent }) {
 }
 ```
 
-When globals change in LiveView, all islands that requested those globals will automatically re-render with the new values.
+When globals change in LiveView, all islands that requested those globals automatically re-render.
 
-> **Best Practice:** Create an `islands/index.js` file that exports all your islands. This ensures your client and server use the same island map and stay in sync:
->
-> ```javascript
-> // islands/index.js
-> export { default as Counter } from "./Counter";
-> export { default as TodoList } from "./TodoList";
-> ```
+Create an `islands/index.js` file to export all islands, ensuring client and server use the same island map:
 
-**Optional: Use with your own state management:**
+```javascript
+// islands/index.js
+import Counter from "./Counter";
+import TodoList from "./TodoList";
 
-If you want to sync globals to a Zustand/Redux store, you can do so with `useEffect`:
+export default { Counter, TodoList };
+```
+
+To sync globals to a Zustand/Redux store:
 
 ```jsx
 function MyIsland({ theme, user, count }) {
@@ -208,22 +200,24 @@ function MyIsland({ theme, user, count }) {
 
 ### Server-Side Rendering (SSR)
 
-LiveReactIslands supports SSR with strategy-aware rendering for optimal performance. The system automatically chooses between `renderToString` (with React hydration markers) or `renderToStaticMarkup` (clean HTML) based on your strategy.
+LiveReactIslands supports SSR with strategy-aware rendering. The system automatically chooses between `renderToString` or `renderToStaticMarkup` based on your strategy.
 
-**1. Create an islands index file (if you haven't already):**
+1. Create an islands index file:
 
 ```javascript
 // islands/index.js
-export { default as Counter } from "./Counter";
-export { default as TodoList } from "./TodoList";
+import Counter from "./Counter";
+import TodoList from "./TodoList";
+
+export default { Counter, TodoList };
 ```
 
-**2. Client entry point (browser):**
+2. Client entry point:
 
 ```javascript
 // app.js
 import { createHooks } from "@live-react-islands/core";
-import * as islands from "./islands";
+import islands from "./islands";
 import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 
@@ -236,27 +230,34 @@ const liveSocket = new LiveSocket("/live", Socket, {
 liveSocket.connect();
 ```
 
-**3. Server entry point (SSR module):**
+3. Server entry point:
 
 ```javascript
-// ssr.js (works with Deno, Node, Bun, or any JS runtime)
+// ssr.js - works with Deno, Node, Bun, or any JS runtime
 import { exposeSSR } from "@live-react-islands/core/ssr";
-import * as islands from "./islands"; // Same islands map!
+import islands from "./islands";
 
-// Optional: provide a context provider and global state handler
-const ContextProvider = ({ children }) => children;
-const onHydrateLiveStore = (globalState) => console.log(globalState);
-
-exposeSSR(islands, ContextProvider, onHydrateLiveStore);
+exposeSSR({ islands });
 ```
 
-> **Note:** Both client and server import from the same `./islands` file, ensuring they stay in sync automatically! The `exposeSSR` function sets up a global `SSR_MODULE` object that the Elixir renderer calls.
+To wrap all islands in a shared context provider:
 
-**4. Configure SSR Backend:**
+```javascript
+import { exposeSSR } from "@live-react-islands/core/ssr";
+import islands from "./islands";
 
-Choose a backend based on your environment:
+const SharedContextProvider = ({ children }) => {
+  return children;
+};
 
-**For Development (Vite):**
+exposeSSR({ islands, SharedContextProvider });
+```
+
+Both client and server import from the same `./islands` file. The `exposeSSR` function sets up a global `SSR_MODULE` object that the Elixir renderer calls.
+
+4. Configure SSR backend:
+
+Development (Vite):
 
 ```elixir
 # config/dev.exs
@@ -264,19 +265,18 @@ config :live_react_islands,
   ssr_renderer: LiveReactIslands.SSR.ViteRenderer
 ```
 
-**For Production (Deno):**
+Production (Deno):
 
 ```elixir
 # config/prod.exs
 config :live_react_islands,
   ssr_renderer: LiveReactIslands.SSR.DenoRenderer
 
-# Also configure the path to your built SSR bundle
 config :live_react_islands_ssr_deno,
   main_module_path: "priv/static/assets/ssr.js"
 ```
 
-**5. Enable SSR in your LiveComponent:**
+5. Enable SSR in your LiveComponent:
 
 ```elixir
 defmodule MyAppWeb.Components.CounterIsland do
@@ -289,31 +289,53 @@ end
 
 ### SSR Strategies
 
-LiveReactIslands supports three SSR strategies, each optimized for different use cases:
-
 #### `:none` (Default)
 
-- **Client:** React mounts on empty container
-- **Server:** No SSR, just `<!-- React renders here -->`
-- **Use case:** Client-only components, no SEO needed
+Client: React mounts on empty container
+Server: No SSR
 
-#### `:overwrite`
+Drawbacks:
+- No SEO content
+- Visual flicker - page renders without island content, then pops in when JS loads
 
-- **Client:** React completely replaces server HTML with `createRoot`
-- **Server:** Uses `renderToStaticMarkup` (clean HTML, smaller payload)
-- **Props:** Embedded in `data-props` attribute, available immediately
-- **Use case:** SEO preview without strict hydration, simpler debugging
+Use case: Purely interactive components where initial render doesn't matter
+
+#### `:overwrite` (Recommended)
+
+Client: React replaces server HTML with `createRoot` in a shared root
+Server: Uses `renderToStaticMarkup`
+
+Architecture: All islands share a single React root using portals
+
+Benefits:
+- SEO-friendly content in first render
+- No visual flicker
+- Better performance through shared React root
+- Islands can share context (enables drag-and-drop between islands, shared providers)
+- No strict DOM matching required
+
+Use case: Most islands, especially when cross-island features or shared context are needed
 
 #### `:hydrate_root`
 
-- **Client:** React hydrates existing DOM with `hydrateRoot`
-- **Server:** Uses `renderToString` (includes React markers like `<!-- -->` comments)
-- **Props:** Embedded in `data-props` attribute, available at hydration time
-- **Use case:** Fastest perceived load, full interactivity after hydration
+Client: React hydrates existing DOM with `hydrateRoot` in individual roots
+Server: Uses `renderToString`
+
+Architecture: Each island gets its own independent React root
+
+Benefits:
+- Prevents re-render of large islands (hydration reuses server HTML)
+- Fastest perceived interactivity for complex components
+
+Tradeoffs:
+- Islands cannot share context (each has isolated React root)
+- Requires strict DOM matching between server and client
+
+Use case: Large, complex islands where avoiding the initial re-render is critical
 
 ### How Props Work
 
-Props are **automatically embedded** in the HTML as a `data-props` attribute:
+Props are automatically embedded in the HTML as a `data-props` attribute:
 
 ```html
 <div id="counter" data-props='{"count":0,"title":"My Counter"}'>
@@ -321,37 +343,18 @@ Props are **automatically embedded** in the HTML as a `data-props` attribute:
 </div>
 ```
 
-The client reads this attribute at mount time, ensuring props are available **synchronously** without waiting for LiveView events. This solves the hydration timing problem where props would arrive after React tried to hydrate.
-
-### Hydration Requirements
-
-When using `:hydrate_root`, the server and client must render **identical output**. React's hydration is strict about matching:
-
-✅ **Works:**
-
-```jsx
-<div>Count: {count}</div>
-<div>{`#${id}`}</div>
-```
-
-❌ **Hydration mismatch:**
-
-```jsx
-<div>#{id}</div> // Creates adjacent text nodes that collapse differently
-```
-
-**Why?** `renderToString` adds HTML comment markers (`<!-- -->`) between adjacent text nodes to preserve boundaries. Use template literals or string concatenation to create single text nodes for reliable hydration.
+The client reads this attribute at mount time, ensuring props are available synchronously without waiting for LiveView events.
 
 ### Runtime Flexibility
 
-The SSR system is **runtime-agnostic**. The same JavaScript code works with:
+The SSR system is runtime-agnostic. The same JavaScript code works with:
 
-- **Vite Dev Server** (development with HMR)
-- **Deno** (production, fast startup)
-- **Node.js** (if you prefer)
-- **Bun** (fastest runtime)
+- Vite Dev Server (development with HMR)
+- Deno
+- Node.js
+- Bun
 
-Just configure the appropriate renderer in your Elixir config.
+Configure the appropriate renderer in your Elixir config.
 
 ## Development
 
@@ -376,13 +379,12 @@ cd examples/with-esbuild  # or examples/with-vite
 mix deps.get
 yarn install
 yarn watch  # or yarn dev for Vite
-# In another terminal:
-mix phx.server
+mix phx.server  # in another terminal
 ```
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
+See [Contributing Guide](./CONTRIBUTING.md).
 
 ## License
 
