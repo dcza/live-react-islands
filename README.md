@@ -26,8 +26,7 @@ Monorepo packages:
 - `@live-react-islands/core` - React hooks and SSR support (JavaScript/TypeScript)
 - `live_react_islands_ssr_vite` - Dev mode SSR backend using Vite (Elixir)
 - `live_react_islands_ssr_deno` - Production SSR backend using Deno (Elixir)
-- `examples/with-esbuild` - esbuild example
-- `examples/with-vite` - Vite example
+- `examples/vite-example` - Full example detailing use with Vite + SSR
 
 ## Quick Start
 
@@ -295,6 +294,7 @@ Client: React mounts on empty container
 Server: No SSR
 
 Drawbacks:
+
 - No SEO content
 - Visual flicker - page renders without island content, then pops in when JS loads
 
@@ -308,6 +308,7 @@ Server: Uses `renderToStaticMarkup`
 Architecture: All islands share a single React root using portals
 
 Benefits:
+
 - SEO-friendly content in first render
 - No visual flicker
 - Better performance through shared React root
@@ -324,10 +325,12 @@ Server: Uses `renderToString`
 Architecture: Each island gets its own independent React root
 
 Benefits:
+
 - Prevents re-render of large islands (hydration reuses server HTML)
 - Fastest perceived interactivity for complex components
 
 Tradeoffs:
+
 - Islands cannot share context (each has isolated React root)
 - Requires strict DOM matching between server and client
 
