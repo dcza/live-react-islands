@@ -1,9 +1,19 @@
 import { useState } from "react";
 
-const Counter = ({ id, pushEvent, count, title }) => {
+const Counter = ({ id, pushEvent, count, title, user }) => {
   console.log("Rendering Island: ", id);
 
   const [localCount, setLocalCount] = useState(0);
+
+  const getInitials = (name) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const handleServerIncrement = () => {
     pushEvent("increment", {});
@@ -15,15 +25,30 @@ const Counter = ({ id, pushEvent, count, title }) => {
 
   return (
     <div
-      className={`mx-auto w-[500px] relative bg-white rounded-lg border-2 transition-all duration-300 overflow-hidden ${"border-blue-200 shadow-lg"}`}
+      className={`mx-auto max-w-[500px] relative bg-white rounded-lg border-2 transition-all duration-300 overflow-hidden ${"border-blue-200 shadow-lg"}`}
     >
       {/* React Island Header */}
       <div className="bg-linear-to-r from-blue-50 to-purple-50 px-3 py-2 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-linear-to-r from-blue-500 to-purple-500 rounded-md flex items-center justify-center">
-              <span className="text-white text-xs font-bold">⚛</span>
-            </div>
+            {user ? (
+              <div
+                className="w-6 h-6 bg-linear-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center cursor-pointer relative group"
+                title={`${user.name}\n${user.email}`}
+              >
+                <span className="text-white text-xs font-bold">
+                  {getInitials(user.name)}
+                </span>
+                <div className="absolute left-0 top-8 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
+                  <div className="font-medium">{user.name}</div>
+                  <div className="text-gray-300">{user.email}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-6 h-6 bg-linear-to-r from-blue-500 to-purple-500 rounded-md flex items-center justify-center">
+                <span className="text-white text-xs font-bold">⚛</span>
+              </div>
+            )}
             <div>
               <h4 className="text-left font-medium text-gray-800 text-xs">
                 {title}
@@ -49,9 +74,9 @@ const Counter = ({ id, pushEvent, count, title }) => {
           true ? "opacity-100" : "opacity-60"
         }`}
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-wrap gap-4">
           {/* Server Section */}
-          <div className="space-y-2">
+          <div className="flex-1 min-w-[200px] space-y-2">
             {/* Server Count */}
             <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-md p-2 border border-blue-200">
               <div className="flex items-center justify-between mb-0.5">
@@ -76,7 +101,7 @@ const Counter = ({ id, pushEvent, count, title }) => {
           </div>
 
           {/* Local Section */}
-          <div className="space-y-2">
+          <div className="flex-1 min-w-[200px] space-y-2">
             {/* Local Count */}
             <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-md p-2 border border-purple-200">
               <div className="flex items-center justify-between mb-0.5">

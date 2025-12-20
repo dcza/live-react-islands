@@ -1,6 +1,22 @@
 defmodule LiveReactIslands.Component do
   @type ssr_strategy :: :none | :overwrite | :hydrate_root
 
+  @doc false
+  def get_or_create_island_index(island_id) do
+    mappings = Process.get(:__island_mappings, %{})
+
+    case Map.fetch(mappings, island_id) do
+      {:ok, idx} ->
+        idx
+
+      :error ->
+        next_index = Process.get(:__next_island_index, 0)
+        Process.put(:__island_mappings, Map.put(mappings, island_id, next_index))
+        Process.put(:__next_island_index, next_index + 1)
+        next_index
+    end
+  end
+
   defmacro __using__(opts) do
     component_name =
       Keyword.get(opts, :component) ||
@@ -25,18 +41,82 @@ defmodule LiveReactIslands.Component do
         prop_defs = unquote(prop_defs)
         component_name = unquote(component_name)
         global_keys = unquote(global_keys)
+        island_index = LiveReactIslands.Component.get_or_create_island_index(assigns.id)
 
+        # Parse global keys to determine which are optional (end with ?)
+        parsed_globals =
+          Enum.map(global_keys, fn key ->
+            key_string = Atom.to_string(key)
+
+            if String.ends_with?(key_string, "?") do
+              clean_key =
+                key_string
+                |> String.trim_trailing("?")
+                |> String.to_atom()
+
+              {clean_key, true}
+            else
+              {key, false}
+            end
+          end)
+
+        # Build available globals list (only include globals that exist)
+        available_globals =
+          Enum.filter(parsed_globals, fn {key, optional?} ->
+            case Process.get({:global, key}, :__not_found__) do
+              :__not_found__ ->
+                if optional? do
+                  false
+                else
+                  raise ArgumentError, """
+                  Island component requested global :#{key} but it's not available.
+                  Make sure the parent LiveView declares: use LiveReactIslands.LiveView, expose_globals: [:#{key}]
+                  Or make it optional by adding a '?' suffix: globals: [:#{key}?]
+                  """
+                end
+
+              _value ->
+                true
+            end
+          end)
+
+        # Build schema with ordered prop and global names (only available globals)
+        prop_names = Enum.map(prop_defs, fn {k, _v} -> Atom.to_string(k) end)
+        global_names = Enum.map(available_globals, fn {k, _opt} -> Atom.to_string(k) end)
+        schema = %{p: prop_names, g: global_names, i: island_index}
+        schema_json = Jason.encode!(schema)
+
+        # Build props map for SSR (uses keys)
         props =
           Enum.reduce(prop_defs, %{}, fn {k, v}, acc ->
             Map.put(acc, k, assigns[k] || v)
           end)
 
-        globals =
-          Enum.reduce(global_keys, %{}, fn k, acc ->
-            Map.put(acc, k, Process.get({:global, k}))
+        # Build props array (ordered by schema, matching prop_names order)
+        props_array =
+          Enum.map(prop_defs, fn {k, v} ->
+            assigns[k] || v
           end)
 
-        props_json = Jason.encode!(props)
+        props_json = Jason.encode!(props_array)
+
+        version = Process.get({:global, :__version}, 0)
+
+        # Build globals array (ordered by schema, only available globals)
+        globals_array =
+          Enum.map(available_globals, fn {k, _opt} ->
+            Process.get({:global, k})
+          end)
+
+        globals_json = Jason.encode!(globals_array)
+
+        # Build globals map for SSR (only available globals + version)
+        globals =
+          available_globals
+          |> Enum.reduce(%{}, fn {k, _opt}, acc ->
+            Map.put(acc, k, Process.get({:global, k}))
+          end)
+          |> Map.put(:__version, version)
 
         staticHTML =
           if @ssr_strategy == :none do
@@ -81,10 +161,31 @@ defmodule LiveReactIslands.Component do
             end
           end
 
+        # Build data attributes
+        base_attrs = """
+        id="#{assigns.id}" \
+        phx-hook="LiveReactIslands" \
+        phx-update="ignore" \
+        data-comp="#{component_name}" \
+        data-ssr="#{@ssr_strategy}" \
+        data-schema="#{Phoenix.HTML.Engine.html_escape(schema_json)}" \
+        data-props="#{Phoenix.HTML.Engine.html_escape(props_json)}"
+        """
+
+        # Add data-globals and data-globals-version only for hydrate_root strategy
+        attrs =
+          if @ssr_strategy == :hydrate_root do
+            base_attrs <>
+              " data-globals=\"#{Phoenix.HTML.Engine.html_escape(globals_json)}\"" <>
+              " data-globals-version=\"#{version}\""
+          else
+            base_attrs
+          end
+
         %Phoenix.LiveView.Rendered{
           static: [
             """
-            <div id="#{assigns.id}" phx-hook="LiveReactIslands" phx-update="ignore" data-comp="#{component_name}" data-ssr="#{@ssr_strategy}" data-props="#{Phoenix.HTML.Engine.html_escape(props_json)}">#{staticHTML}</div>
+            <div #{attrs}>#{staticHTML}</div>
             """
           ],
           dynamic: fn _ -> [] end,
@@ -141,12 +242,18 @@ defmodule LiveReactIslands.Component do
 
           _ ->
             # Initial mount - initialize ownership tracking
+            # Store prop schema for indexed updates
+            prop_schema = Enum.map(prop_defs, fn {k, _v} -> k end)
+            island_index = LiveReactIslands.Component.get_or_create_island_index(assigns.id)
+
             socket =
               socket
               |> assign(assigns)
               |> assign(:__external_owned, MapSet.new())
               # Start with all props internal
               |> assign(:__internal_owned, MapSet.new(Map.keys(prop_defs)))
+              |> assign(:__prop_schema, prop_schema)
+              |> assign(:__island_index, island_index)
 
             # Process all assigns first
             socket =
@@ -183,7 +290,8 @@ defmodule LiveReactIslands.Component do
                     |> assign(:__external_owned, external_owned)
                     |> assign(:__internal_owned, internal_owned)
                     |> assign(key, value)
-                    # Initial mount - no push, props already in data-props
+
+                  # Initial mount - no push, props already in data-props
 
                   true ->
                     {:ok, changed_socket} = handle_assign(acc, key, value)
@@ -239,9 +347,14 @@ defmodule LiveReactIslands.Component do
         allowed_to_push = Keyword.get(opts, :allowed_to_push, false)
 
         if allowed_to_push or MapSet.member?(internal_owned, attr) do
+          # Find the index of this prop in the schema
+          prop_schema = Map.get(socket.assigns, :__prop_schema, [])
+          prop_index = Enum.find_index(prop_schema, &(&1 == attr))
+          island_index = Map.get(socket.assigns, :__island_index)
+
           socket
           |> assign(attr, value)
-          |> push_event("p", %{attr => value, id: socket.assigns.id})
+          |> push_event("lri-p", %{prop_index => value, i: island_index})
         else
           raise ArgumentError, "Cannot modify undefined or externally owned prop `#{attr}`"
         end

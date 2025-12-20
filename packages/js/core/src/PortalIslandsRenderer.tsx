@@ -1,98 +1,106 @@
-import React, {
-  useState,
-  useRef,
-  useImperativeHandle,
-  forwardRef,
-  memo,
-  ComponentType,
-  useEffect,
-} from "react";
+import React, { useRef, memo, useSyncExternalStore, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type {
   IslandData,
-  IslandComponent,
-  SharedIslandsRendererHandle,
   SharedIslandsRendererProps,
+  IslandStoreAccess,
 } from "./types";
 
-export const PortalIslandsRenderer = forwardRef<
-  SharedIslandsRendererHandle,
-  SharedIslandsRendererProps
->((props, ref) => {
-  const [renderingEnabled, setRenderingEnabled] = useState(false);
-  const [islands, setIslands] = useState<Record<string, IslandData>>({});
-  const clearedElements = useRef(new Set<string>());
-  const memoizedComponents = useRef(
-    new Map<IslandComponent, ComponentType<any>>()
+const PortalIsland = memo(
+  ({
+    data,
+    storeAccess,
+  }: {
+    data: IslandData;
+    storeAccess: IslandStoreAccess;
+  }) => {
+    const {
+      Component,
+      ContextProvider,
+      id,
+      pushEvent,
+      ssrStrategy,
+      el,
+      globalKeys,
+    } = data;
+
+    const MemoizedComponent = useMemo(() => memo(Component), [Component]);
+    const MemoizedContextProvider = useMemo(
+      () => (ContextProvider ? memo(ContextProvider) : null),
+      [ContextProvider]
+    );
+
+    const currentProps = useSyncExternalStore(
+      storeAccess.subscribeToProps,
+      () => storeAccess.getProps(id),
+      () => null
+    );
+
+    const allGlobals = useSyncExternalStore(
+      storeAccess.subscribeToGlobals,
+      storeAccess.getGlobals,
+      () => null
+    );
+
+    const didClearRef = useRef(false);
+    if (ssrStrategy === "overwrite" && !didClearRef.current) {
+      el.innerHTML = "";
+      didClearRef.current = true;
+    }
+
+    if (!allGlobals) {
+      console.log("[PortalIsland] Waiting for globals", id);
+      return null;
+    }
+
+    console.log("[PortalIsland] Rendering", { id, allGlobals });
+
+    const relevantGlobals: Record<string, any> = {};
+    if (allGlobals) {
+      globalKeys.forEach((key) => {
+        if (key in allGlobals) {
+          relevantGlobals[key] = allGlobals[key];
+        }
+      });
+    }
+
+    const mergedProps = { ...relevantGlobals, ...currentProps };
+
+    const islandNode = (
+      <MemoizedComponent {...mergedProps} id={id} pushEvent={pushEvent} />
+    );
+    const content = MemoizedContextProvider ? (
+      <MemoizedContextProvider>{islandNode}</MemoizedContextProvider>
+    ) : (
+      islandNode
+    );
+
+    return createPortal(content, el);
+  }
+);
+PortalIsland.displayName = "[ReactLiveIslands]PortalIsland";
+
+export const PortalIslandsRenderer: React.FC<SharedIslandsRendererProps> = ({
+  storeAccess,
+}) => {
+  const sharedIslandsObj = useSyncExternalStore(
+    storeAccess.subscribeToSharedIslands,
+    storeAccess.getSharedIslands
   );
 
-  useEffect(() => {
-    props.onReady?.();
-  }, []);
-
-  // Expose methods via ref
-  useImperativeHandle(ref, () => ({
-    setRenderingEnabled,
-    addIsland: (data: IslandData) => {
-      console.log("[PortalIslandsRenderer] Adding island:", data.el.id);
-      setIslands((prev) => ({
-        ...prev,
-        [data.el.id]: data,
-      }));
-    },
-    updateIsland: (id, props) => {
-      setIslands((prev) => ({
-        ...prev,
-        [id]: { ...prev[id], props: { ...prev[id]?.props, ...props } },
-      }));
-    },
-    removeIsland: (id: string) => {
-      clearedElements.current?.delete(id);
-      setIslands((prev) => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-    },
-  }));
-
-  if (!renderingEnabled) {
-    console.log("[PortalIslandsRenderer] Waiting for globals");
-    return null;
-  }
+  const islands = Object.values(sharedIslandsObj);
 
   console.log(
     "[PortalIslandsRenderer] Rendering islands:",
-    Object.keys(islands)
+    islands.map((d) => d.id)
   );
 
   return (
     <>
-      {Object.entries(islands).map(
-        ([id, { Component, props, el, pushEvent, ssrStrategy }]) => {
-          // Clear element ssr content once before first render
-          if (ssrStrategy === "overwrite" && !clearedElements.current.has(id)) {
-            el.innerHTML = "";
-            clearedElements.current.add(id);
-          }
-
-          // Memoize component to prevent unnecessary re-renders
-          if (!memoizedComponents.current.has(Component)) {
-            memoizedComponents.current.set(Component, memo(Component));
-          }
-          const MemoizedComponent = memoizedComponents.current.get(Component)!;
-
-          return createPortal(
-            <MemoizedComponent
-              key={id}
-              {...props}
-              id={id}
-              pushEvent={pushEvent}
-            />,
-            el
-          );
-        }
-      )}
+      {islands.map((data) => (
+        <PortalIsland key={data.id} data={data} storeAccess={storeAccess} />
+      ))}
     </>
   );
-});
+};
+PortalIslandsRenderer.displayName = "[ReactLiveIslands]PortalIslandsRenderer";

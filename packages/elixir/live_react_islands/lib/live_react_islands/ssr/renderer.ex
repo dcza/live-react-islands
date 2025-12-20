@@ -4,24 +4,6 @@ defmodule LiveReactIslands.SSR.Renderer do
 
   Implementations should handle rendering React components to HTML strings.
   This allows for different SSR backends (Deno, Node, Bun, etc.)
-
-  ## Example Implementation
-
-      defmodule MyApp.DenoRenderer do
-        @behaviour LiveReactIslands.SSR.Renderer
-        use GenServer
-
-        def start_link(opts) do
-          GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-        end
-
-        @impl true
-        def render_component(component_name, id, props, global_state) do
-          GenServer.call(__MODULE__, {:render, component_name, id, props, global_state})
-        end
-
-        # ... GenServer callbacks
-      end
   """
 
   @doc """

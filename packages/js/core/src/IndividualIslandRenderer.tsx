@@ -1,25 +1,70 @@
-import React, { forwardRef, useImperativeHandle, useState } from "react";
-import type {
-  IndividualIslandsRendererHandle,
-  IndividualIslandsRendererProps,
-} from "./types";
+import React, { useSyncExternalStore, memo, useMemo } from "react";
+import type { IndividualIslandsRendererProps } from "./types";
 
-export const IndividualIslandRenderer = forwardRef<
-  IndividualIslandsRendererHandle,
+export const IndividualIslandRenderer: React.FC<
   IndividualIslandsRendererProps
->(({ data }, ref) => {
-  const { Component, ContextProvider, id, pushEvent } = data;
-  const [props, setProps] = useState(data.props);
+> = ({ data, storeAccess }) => {
+  const { Component, ContextProvider, id, pushEvent, globalKeys } = data;
 
-  // Expose methods via ref
-  useImperativeHandle(ref, () => ({
-    update: (p) => setProps((prev) => ({ ...prev, ...p })),
-  }));
+  const MemoizedComponent = useMemo(() => memo(Component), [Component]);
+  const MemoizedContextProvider = useMemo(
+    () => (ContextProvider ? memo(ContextProvider) : null),
+    [ContextProvider]
+  );
 
-  const islandNode = <Component {...props} id={id} pushEvent={pushEvent} />;
-  return ContextProvider ? (
-    <ContextProvider>{islandNode}</ContextProvider>
+  const currentProps = useSyncExternalStore(
+    storeAccess.subscribeToProps,
+    () => storeAccess.getProps(id),
+    () => data.hydrationData?.props
+  );
+
+  // Check once if hydration globals version matches store version
+  const serverGlobalsSnapshot = useMemo(() => {
+    const hydrationGlobals = data.hydrationData?.globals;
+    if (!hydrationGlobals) return () => hydrationGlobals;
+    let comparedVersions = false;
+    let useStoreReference = false;
+    return () => {
+      if (!comparedVersions) {
+        comparedVersions = true;
+        const storeGlobals = storeAccess.getGlobals();
+        const hydrationVersion = hydrationGlobals.__version ?? -1;
+        const storeVersion = storeGlobals?.__version ?? -1;
+        useStoreReference = storeVersion === hydrationVersion;
+      }
+      return useStoreReference ? storeAccess.getGlobals() : hydrationGlobals;
+    };
+  }, [data.hydrationData?.globals, storeAccess]);
+
+  const globals = useSyncExternalStore(
+    storeAccess.subscribeToGlobals,
+    storeAccess.getGlobals,
+    serverGlobalsSnapshot
+  );
+
+  const filteredGlobals: Record<string, any> = {};
+  if (globals) {
+    globalKeys.forEach((key) => {
+      if (key in globals) {
+        filteredGlobals[key] = globals[key];
+      }
+    });
+  }
+
+  const islandNode = (
+    <MemoizedComponent
+      {...filteredGlobals}
+      {...currentProps}
+      id={id}
+      pushEvent={pushEvent}
+    />
+  );
+  return MemoizedContextProvider ? (
+    <MemoizedContextProvider>{islandNode}</MemoizedContextProvider>
   ) : (
     islandNode
   );
-});
+};
+
+IndividualIslandRenderer.displayName =
+  "[ReactLiveIslands] IndividualIslandRenderer";

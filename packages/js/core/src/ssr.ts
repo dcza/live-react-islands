@@ -1,35 +1,40 @@
 import React from "react";
 import { renderToString, renderToStaticMarkup } from "react-dom/server";
-import type { IslandsMap, ContextProviderComponent } from "./types";
+import {
+  type IslandsMap,
+  type ContextProviderComponent,
+  NullContextProvider,
+} from "./types";
+
+export interface ExposeSSROptions {
+  islands: IslandsMap;
+  SharedContextProvider: ContextProviderComponent;
+}
 
 /**
  * Server-side rendering function for React islands.
  *
  * This function creates SSR renderers for your island components.
  * It works in any JavaScript runtime: Deno, Node, Bun, etc.
- *
- * @param islands - Map of island components and optional context provider for hydrated roots
- * @param SharedContextProvider - Optional React context provider to wrap all overwrite islands
- * @param onHydrateLiveStore - Optional callback for handling global state during SSR
  */
-export function exposeSSR(
-  islands: IslandsMap,
-  SharedContextProvider: ContextProviderComponent = ({ children }) => children,
-  onHydrateLiveStore?: (data: any) => void
-) {
-  const makeRenderer = (renderFn: typeof renderToString | typeof renderToStaticMarkup) =>
+export function exposeSSR({
+  islands,
+  SharedContextProvider = NullContextProvider,
+}: ExposeSSROptions) {
+  const makeRenderer =
+    (renderFn: typeof renderToString | typeof renderToStaticMarkup) =>
     (IslandComponent: any) =>
-    (id: string, props: Record<string, any> = {}, globalState: any = {}) => {
-      // Call handler if provided
-      if (onHydrateLiveStore) {
-        onHydrateLiveStore(globalState);
-      }
-
+    (
+      id: string,
+      props: Record<string, any> = {},
+      globals: Record<string, any> = {}
+    ) => {
       return renderFn(
         React.createElement(
           SharedContextProvider,
           null,
           React.createElement(IslandComponent, {
+            ...globals,
             ...props,
             id,
             pushEvent: () => {},
@@ -71,7 +76,8 @@ export function exposeSSR(
     globalState: any = {},
     strategy: "hydrate_root" | "overwrite" = "overwrite"
   ): string => {
-    const renderers = strategy === "hydrate_root" ? hydrateRenderers : overwriteRenderers;
+    const renderers =
+      strategy === "hydrate_root" ? hydrateRenderers : overwriteRenderers;
     if (!renderers[key]) {
       throw new Error(`No SSR renderer found for Component "${key}"`);
     }
@@ -91,6 +97,6 @@ export function exposeSSR(
   universalGlobal.SSR_MODULE = {
     renderSSRIsland,
     hydrateRenderers,
-    overwriteRenderers
+    overwriteRenderers,
   };
 }

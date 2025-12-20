@@ -13,9 +13,14 @@ defmodule ViteExampleWeb.Router do
   scope "/", ViteExampleWeb do
     pipe_through(:browser)
 
-    live("/navigation", NavigationDemoLive)
-    live("/push-navigate", PushNavigateLive)
-    live("/navigate", NavigateLive)
-    live("/ssr", SSRDemoLive)
+    get("/", PageController, :index)
+
+    live_session :default, layout: {ViteExampleWeb.Layouts, :app} do
+      live("/navigation", NavigationDemoLive)
+      live("/push-navigate", PushNavigateLive)
+      live("/navigate", NavigateLive)
+      live("/ssr", SSRDemoLive)
+      live("/globals", GlobalsDemoLive)
+    end
   end
 end

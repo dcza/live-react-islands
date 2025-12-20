@@ -5,7 +5,6 @@ import islands from "./islands";
 // Create the React Islands hooks
 const islandHooks = createHooks({
   islands,
-  //globalStoreHandler: (data) => console.log("[globalStoreHandler]", data),
 });
 
 // Set up LiveView

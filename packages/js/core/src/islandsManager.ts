@@ -5,9 +5,9 @@ import type {
   ContextProviderComponent,
   IslandData,
   SharedIslandsRendererComponent,
-  SharedIslandsRendererHandle,
   IndividualIslandsRendererComponent,
-  IndividualIslandsRendererHandle,
+  IslandStoreAccess,
+  IndividualIslandsRendererProps,
 } from "./types";
 import { PortalIslandsRenderer } from "./PortalIslandsRenderer";
 import { IndividualIslandRenderer } from "./IndividualIslandRenderer";
@@ -20,16 +20,19 @@ export const SHARED_ROOT_ID = "__live_react_islands_shared_root__";
 // ============================================================================
 
 interface ManagerState {
-  renderingEnabled: boolean;
+  propsStore: Map<string, Record<string, any>>;
+  propsListeners: Set<() => void>;
+  globalsRef: React.MutableRefObject<Record<string, any> | null>;
+  globalsListeners: Set<() => void>;
+  sharedIslandsRef: React.MutableRefObject<Record<string, IslandData>>;
+  sharedIslandsListeners: Set<() => void>;
   roots: Record<string, any>;
-  individualRendererRefs: Record<string, any>;
-  sharedRendererRef: React.RefObject<SharedIslandsRendererHandle>;
-  pendingSharedIslands: IslandData[];
+  storeAccess: IslandStoreAccess;
 }
 
 export interface Manager {
   initialize: (params: {
-    SharedContextProvider: ContextProviderComponent;
+    SharedContextProvider?: ContextProviderComponent;
     SharedIslandsRenderer?: SharedIslandsRendererComponent;
   }) => ManagerState;
   mountIsland: (
@@ -40,15 +43,50 @@ export interface Manager {
   unmountIsland: (state: ManagerState, id: string) => ManagerState;
   updateIslandProps: (
     state: ManagerState,
-    id: string,
+    islandId: string,
     props: Record<string, any>
-  ) => void;
-  enableRendering: (state: ManagerState) => ManagerState;
+  ) => ManagerState;
+  updateGlobals: (
+    state: ManagerState,
+    globals: Record<string, any>
+  ) => ManagerState;
 }
 
 // ============================================================================
 // Helper
 // ============================================================================
+
+const NullContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => children;
+
+const withSharedRootName = (
+  ContextProvider: ContextProviderComponent
+): ContextProviderComponent => {
+  const originalName =
+    ContextProvider.displayName || ContextProvider.name || "ContextProvider";
+
+  function NamedWrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(ContextProvider, null, children);
+  }
+
+  NamedWrapper.displayName = `[LiveReactIslands] SharedRoot(${originalName})`;
+  return NamedWrapper;
+};
+
+const withIndividualRootName = (
+  islandId: string,
+  IslandRenderer: IndividualIslandsRendererComponent
+): IndividualIslandsRendererComponent => {
+  const originalName = IslandRenderer.displayName;
+
+  function NamedWrapper(props: IndividualIslandsRendererProps) {
+    return React.createElement(IslandRenderer, props);
+  }
+
+  NamedWrapper.displayName = `[LiveReactIslands] HydratedRoot#${islandId}`;
+  return NamedWrapper;
+};
 
 const getOrCreateSharedRootElement = (): HTMLElement => {
   let rootElement = document.getElementById(SHARED_ROOT_ID);
@@ -61,26 +99,15 @@ const getOrCreateSharedRootElement = (): HTMLElement => {
   return rootElement;
 };
 
-const flushPendingIslands = (state: ManagerState): void => {
-  console.log(
-    `[IslandsManager] Flushing ${state.pendingSharedIslands.length} pending islands`
-  );
-  state.pendingSharedIslands.forEach((data) => {
-    state.sharedRendererRef.current?.addIsland(data);
-  });
-  state.pendingSharedIslands = [];
-};
-
 const mountSharedIsland = (
   state: ManagerState,
   data: IslandData
 ): ManagerState => {
-  if (state.sharedRendererRef.current) {
-    state.sharedRendererRef.current.addIsland(data);
-  } else {
-    console.log(`[Island(${data.id})] Queueing until renderer ready`);
-    state.pendingSharedIslands.push(data);
-  }
+  state.sharedIslandsRef.current = {
+    ...state.sharedIslandsRef.current,
+    [data.id]: data,
+  };
+  state.sharedIslandsListeners.forEach((cb) => cb());
   return state;
 };
 
@@ -89,22 +116,22 @@ const mountIndividualIsland = (
   data: IslandData,
   IslandRenderer: IndividualIslandsRendererComponent
 ): ManagerState => {
-  const rendererRef = React.createRef<IndividualIslandsRendererHandle>();
-  // TODO: Need to wait for globals before hydration
+  const NamedIslandRenderer = withIndividualRootName(data.id, IslandRenderer);
   const root = ReactDOM.hydrateRoot(
     data.el,
-    React.createElement(IslandRenderer, {
-      ref: rendererRef,
-      data,
-    })
+    React.createElement(
+      React.StrictMode,
+      null,
+      React.createElement(NamedIslandRenderer, {
+        data,
+        storeAccess: state.storeAccess,
+      })
+    )
   );
+
   return {
     ...state,
     roots: { ...state.roots, [data.id]: root },
-    individualRendererRefs: {
-      ...state.individualRendererRefs,
-      [data.id]: rendererRef,
-    },
   };
 };
 
@@ -114,40 +141,70 @@ const mountIndividualIsland = (
 
 const ManagerObj: Manager = {
   initialize: ({
-    SharedContextProvider,
+    SharedContextProvider = NullContextProvider,
     SharedIslandsRenderer = PortalIslandsRenderer,
   }) => {
     const rootElement = getOrCreateSharedRootElement();
     const root = ReactDOM.createRoot(rootElement);
-    const sharedRendererRef = React.createRef<SharedIslandsRendererHandle>();
 
-    const state: ManagerState = {
-      renderingEnabled: false,
-      roots: { [SHARED_ROOT_ID]: root },
-      individualRendererRefs: {},
-      sharedRendererRef,
-      pendingSharedIslands: [],
+    // Create stores and listeners
+    const propsStore = new Map<string, Record<string, any>>();
+    const propsListeners = new Set<() => void>();
+    const globalsRef = { current: null as Record<string, any> | null };
+    const globalsListeners = new Set<() => void>();
+    const sharedIslandsRef = { current: {} as Record<string, IslandData> };
+    const sharedIslandsListeners = new Set<() => void>();
+
+    // Create storeAccess as a closure over the stores/listeners
+    const storeAccess: IslandStoreAccess = {
+      getProps: (islandId: string) => propsStore.get(islandId) || null,
+      subscribeToProps: (cb: () => void) => {
+        propsListeners.add(cb);
+        return () => propsListeners.delete(cb);
+      },
+      getGlobals: () => globalsRef.current,
+      subscribeToGlobals: (cb: () => void) => {
+        globalsListeners.add(cb);
+        return () => globalsListeners.delete(cb);
+      },
+      getSharedIslands: () => sharedIslandsRef.current,
+      subscribeToSharedIslands: (cb: () => void) => {
+        sharedIslandsListeners.add(cb);
+        return () => sharedIslandsListeners.delete(cb);
+      },
     };
+
+    // Create the state
+    const state: ManagerState = {
+      propsStore,
+      globalsRef,
+      propsListeners,
+      globalsListeners,
+      sharedIslandsRef,
+      sharedIslandsListeners,
+      roots: { [SHARED_ROOT_ID]: root },
+      storeAccess,
+    };
+
+    const NamedSharedContextProvider = withSharedRootName(
+      SharedContextProvider
+    );
 
     root.render(
       React.createElement(
-        SharedContextProvider,
+        React.StrictMode,
         null,
-        React.createElement(SharedIslandsRenderer, {
-          ref: sharedRendererRef,
-          onReady: () => {
-            console.log("[IslandsManager] Shared renderer ready");
-            flushPendingIslands(state);
-          },
-        })
+        React.createElement(
+          NamedSharedContextProvider,
+          null,
+          React.createElement(SharedIslandsRenderer, {
+            storeAccess: state.storeAccess,
+          })
+        )
       )
     );
 
     return state;
-  },
-  enableRendering: (state) => {
-    state.sharedRendererRef.current?.setRenderingEnabled(true);
-    return { ...state, renderingEnabled: true };
   },
   mountIsland: (state, data, IslandRenderer = IndividualIslandRenderer) => {
     switch (data.ssrStrategy) {
@@ -157,22 +214,42 @@ const ManagerObj: Manager = {
         return mountSharedIsland(state, data);
     }
   },
-  updateIslandProps: (state, id, props) => {
-    if (state.individualRendererRefs[id])
-      state.individualRendererRefs[id].current?.update(props);
-    else {
-      state.sharedRendererRef.current?.updateIsland(id, props);
-    }
-  },
   unmountIsland: (state, id) => {
+    state.propsStore.delete(id);
+
     if (state.roots[id]) {
       state.roots[id].unmount();
-      const { [id]: removed, ...remainingRoots } = state.roots;
-      return { ...state, roots: remainingRoots };
+      const { [id]: removedRoot, ...remainingRoots } = state.roots;
+      return {
+        ...state,
+        roots: remainingRoots,
+      };
     } else {
-      state.sharedRendererRef.current?.removeIsland(id);
+      // Create new object to trigger reference change
+      const { [id]: removed, ...remaining } = state.sharedIslandsRef.current;
+      state.sharedIslandsRef.current = remaining;
+      state.sharedIslandsListeners.forEach((cb) => cb());
       return state;
     }
+  },
+  updateIslandProps: (state, islandId, props) => {
+    const existing = state.propsStore.get(islandId) || {};
+    state.propsStore.set(islandId, { ...existing, ...props });
+    state.propsListeners.forEach((cb) => cb());
+    return state;
+  },
+  updateGlobals: (state, globals) => {
+    const incomingVersion = globals.__version ?? -1;
+    const storeVersion = state.globalsRef.current?.__version ?? -1;
+    if (incomingVersion > storeVersion) {
+      state.globalsRef.current = {
+        ...(state.globalsRef.current || {}),
+        ...globals,
+      };
+      state.globalsListeners.forEach((cb) => cb());
+    }
+
+    return state;
   },
 };
 export default ManagerObj;

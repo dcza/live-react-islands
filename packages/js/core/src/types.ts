@@ -21,37 +21,42 @@ export type SSRStrategy = "none" | "overwrite" | "hydrate_root";
 
 export type PushEventFn = (eventName: string, payload: any) => void;
 
+export interface IslandStoreAccess {
+  getProps: (islandId: string) => Record<string, any> | null;
+  subscribeToProps: (callback: () => void) => () => void;
+  getGlobals: () => Record<string, any> | null;
+  subscribeToGlobals: (callback: () => void) => () => void;
+  getSharedIslands: () => Record<string, IslandData>;
+  subscribeToSharedIslands: (callback: () => void) => () => void;
+}
+
 export interface IslandData {
   id: string;
   el: HTMLElement;
   ssrStrategy: SSRStrategy;
   Component: IslandComponent;
   ContextProvider?: ContextProviderComponent;
-  props: Record<string, any>;
+  hydrationData: {
+    props: Record<string, any>;
+    globals: Record<string, any>;
+  } | null;
   pushEvent: PushEventFn;
+  globalKeys: string[];
 }
 
 export interface SharedIslandsRendererProps {
-  onReady?: () => void;
+  storeAccess: IslandStoreAccess;
 }
-export interface SharedIslandsRendererHandle {
-  setRenderingEnabled: (enabled: boolean) => void;
-  addIsland: (data: IslandData) => void;
-  updateIsland: (id: string, props: Record<string, any>) => void;
-  removeIsland: (id: string) => void;
-}
-export type SharedIslandsRendererComponent = React.ForwardRefExoticComponent<
-  SharedIslandsRendererProps & React.RefAttributes<SharedIslandsRendererHandle>
->;
+export type SharedIslandsRendererComponent =
+  React.FC<SharedIslandsRendererProps>;
 
 export interface IndividualIslandsRendererProps {
   data: IslandData;
-}
-export interface IndividualIslandsRendererHandle {
-  update: (props: Record<string, any>) => void;
+  storeAccess: IslandStoreAccess;
 }
 export type IndividualIslandsRendererComponent =
-  React.ForwardRefExoticComponent<
-    IndividualIslandsRendererProps &
-      React.RefAttributes<IndividualIslandsRendererHandle>
-  >;
+  React.FC<IndividualIslandsRendererProps>;
+
+export const NullContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => children;

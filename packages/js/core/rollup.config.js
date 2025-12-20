@@ -18,7 +18,14 @@ export default [
         sourcemap: true,
       },
     ],
-    external: ["react", "react-dom", "phoenix", "phoenix_live_view"],
+    external: (id) => {
+      return id === "react" ||
+             id.startsWith("react/") ||
+             id === "react-dom" ||
+             id.startsWith("react-dom/") ||
+             id === "phoenix" ||
+             id === "phoenix_live_view";
+    },
     plugins: [
       resolve(),
       commonjs(),
@@ -45,7 +52,14 @@ export default [
         sourcemap: true,
       },
     ],
-    external: ["react", "react-dom/server", "phoenix", "phoenix_live_view"],
+    external: (id) => {
+      return id === "react" ||
+             id.startsWith("react/") ||
+             id === "react-dom" ||
+             id.startsWith("react-dom/") ||
+             id === "phoenix" ||
+             id === "phoenix_live_view";
+    },
     plugins: [
       resolve(),
       commonjs(),

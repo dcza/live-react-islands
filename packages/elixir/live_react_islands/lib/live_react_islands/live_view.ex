@@ -7,21 +7,27 @@ defmodule LiveReactIslands.LiveView do
 
       @global_keys unquote(global_keys)
 
-      def handle_event("get_globals", _params, socket) do
+      def handle_event("lri-g", _params, socket) do
+        version = Process.get({:global, :__version}, 0)
+
         globals =
           @global_keys
           |> Enum.map(fn key -> {key, Process.get({:global, key})} end)
           |> Enum.filter(fn {_key, value} -> value != nil end)
           |> Map.new()
+          |> Map.put(:__version, version)
 
         {:reply, globals, socket}
       end
 
       # Override assign to handle globals implicitly
       def assign(socket, key, value) when key in @global_keys do
+        version = Process.get({:global, :__version}, 0) + 1
+        Process.put({:global, :__version}, version)
+
         Process.put({:global, key}, value)
         socket = Phoenix.Component.assign(socket, key, value)
-        Phoenix.LiveView.push_event(socket, "update_globals", %{key => value})
+        Phoenix.LiveView.push_event(socket, "lri-g", %{key => value, :__version => version})
       end
 
       def assign(socket, key, value) do

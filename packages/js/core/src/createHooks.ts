@@ -1,10 +1,11 @@
 import IslandsManager, { Manager } from "./islandsManager";
-import type {
-  IslandsMap,
-  SSRStrategy,
-  PushEventFn,
-  ContextProviderComponent,
-  IslandComponent,
+import {
+  type IslandsMap,
+  type SSRStrategy,
+  type PushEventFn,
+  type ContextProviderComponent,
+  type IslandComponent,
+  NullContextProvider,
 } from "./types";
 
 // ============================================================================
@@ -25,7 +26,6 @@ interface LiveViewHook {
 export interface CreateHooksOptions {
   islands: IslandsMap;
   SharedContextProvider?: ContextProviderComponent;
-  globalStoreHandler?: ((data: any) => void) | null;
   manager?: Manager;
 }
 
@@ -42,10 +42,6 @@ function createPushEventFn(hook: LiveViewHook): PushEventFn {
 // ============================================================================
 // Helper
 // ============================================================================
-
-const NullContextProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => children;
 
 const extractIslandConfig = (
   islandsMap: IslandsMap,
@@ -79,7 +75,6 @@ const extractIslandConfig = (
 export function createHooks({
   islands: islandsMap = {},
   SharedContextProvider = NullContextProvider,
-  globalStoreHandler = null,
   manager = IslandsManager,
 }: CreateHooksOptions) {
   console.log(`[LiveReactIslands] Creating hooks`);
@@ -100,24 +95,23 @@ export function createHooks({
       }
 
       // Pull globals once on first island mount
-      if (!globalStoreHandler) {
-        managerState = manager.enableRendering(managerState);
-      } else if (!globalsRequested) {
+      if (!globalsRequested) {
         globalsRequested = true;
-        this.pushEvent("get_globals", {}, (reply, ref) => {
-          globalStoreHandler(reply);
-          this.handleEvent("update_globals", (data) => {
-            globalStoreHandler(data);
-          });
-          managerState = manager.enableRendering(managerState);
+        this.handleEvent("lri-g", (data) => {
+          managerState = manager.updateGlobals(managerState, data);
+        });
+        this.pushEvent("lri-g", {}, (reply) => {
+          managerState = manager.updateGlobals(managerState, reply);
         });
       }
 
-      // Handle mount logic
       const {
         comp: componentName,
         ssr: ssrData,
         props: propsData,
+        schema: schemaData,
+        globals: globalsData,
+        globalsVersion: globalsVersionData,
       } = this.el.dataset;
       if (!componentName) {
         console.error(
@@ -126,13 +120,51 @@ export function createHooks({
         return;
       }
 
+      let schema: { p: string[]; g: string[]; i: number } = {
+        p: [],
+        g: [],
+        i: 0,
+      };
+      if (schemaData) {
+        try {
+          schema = JSON.parse(schemaData);
+        } catch (e) {
+          console.error(
+            `[Island(${this.el.id})] Failed to parse data-schema:`,
+            e
+          );
+        }
+      }
+
       let initialProps: Record<string, any> = {};
       if (propsData) {
         try {
-          initialProps = JSON.parse(propsData);
+          const propsArray = JSON.parse(propsData);
+          schema.p.forEach((propName, idx) => {
+            initialProps[propName] = propsArray[idx];
+          });
         } catch (e) {
           console.error(
             `[Island(${this.el.id})] Failed to parse data-props:`,
+            e
+          );
+        }
+      }
+
+      // Only for hydrate_root strategy
+      let initialGlobals: Record<string, any> = {};
+      if (globalsData) {
+        try {
+          const globalsArray = JSON.parse(globalsData);
+          schema.g.forEach((globalName, idx) => {
+            initialGlobals[globalName] = globalsArray[idx];
+          });
+          if (!globalsVersionData)
+            throw "Missing data-globals-version attribute";
+          initialGlobals.__version = parseInt(globalsVersionData, 10);
+        } catch (e) {
+          console.error(
+            `[Island(${this.el.id})] Failed to parse data-globals:`,
             e
           );
         }
@@ -164,6 +196,12 @@ export function createHooks({
 
       const pushEvent = createPushEventFn(this);
 
+      managerState = manager.updateIslandProps(
+        managerState,
+        this.el.id,
+        initialProps
+      );
+
       managerState = manager.mountIsland(managerState, {
         id: this.el.id,
         el: this.el,
@@ -171,15 +209,32 @@ export function createHooks({
         ContextProvider: islandConfig.ContextProvider,
         ssrStrategy,
         pushEvent,
-        props: initialProps,
+        hydrationData:
+          ssrStrategy === "hydrate_root"
+            ? { props: initialProps, globals: initialGlobals }
+            : null,
+        globalKeys: schema.g,
       });
 
-      // Setup prop update handler
       this.handleEvent(
-        "p",
-        ({ id, ...props }: { id: string; [key: string]: any }) => {
-          if (id !== this.el.id) return;
-          manager.updateIslandProps(managerState, this.el.id, props);
+        "lri-p",
+        (payload: { i: number; [key: number]: any }) => {
+          if (payload.i !== schema.i) return;
+
+          const props: Record<string, any> = {};
+          Object.entries(payload).forEach(([key, value]) => {
+            if (key === "i") return;
+            const idx = parseInt(key, 10);
+            if (!isNaN(idx) && schema.p[idx]) {
+              props[schema.p[idx]] = value;
+            }
+          });
+
+          managerState = manager.updateIslandProps(
+            managerState,
+            this.el.id,
+            props
+          );
         }
       );
     },

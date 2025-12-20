@@ -1,9 +1,8 @@
 defmodule ViteExampleWeb.Components.CounterIslandSSROverwrite do
   use LiveReactIslands.Component,
-    # This corresponds to the property name in the 'islands' object passed to createHooks
     component: "Counter",
-    # Only props defined here will get pushed down to React
     props: %{title: "Counter Island (Overwrite SSR)", count: 0},
+    globals: [:user?],
     ssr_strategy: :overwrite
 
   def handle_event("increment", _params, socket) do
