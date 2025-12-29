@@ -73,14 +73,14 @@ defmodule LiveReactIslands.SSR.ViteRenderer do
       timeout: timeout
     }
 
-    Logger.info("ViteRenderer started, connecting to #{vite_url}")
+    Logger.info("SSR renderer: LiveReactIslands.SSR.ViteRenderer started, connecting to #{vite_url}")
 
     case Req.get("#{vite_url}/__ssr") do
       {:ok, _} ->
-        Logger.info("Successfully connected to Vite dev server")
+        Logger.info("SSR renderer: Successfully connected to Vite dev server")
 
       {:error, error} ->
-        Logger.warning("Could not connect to Vite dev server: #{inspect(error)}")
+        Logger.warning("SSR renderer: Could not connect to Vite dev server at #{vite_url}: #{inspect(error)}")
     end
 
     {:ok, state}

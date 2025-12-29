@@ -27,10 +27,19 @@ defmodule LiveReactIslands.Component do
     ssr_strategy = Keyword.get(opts, :ssr_strategy, :none)
     global_keys = Keyword.get(opts, :globals, [])
 
+    # SSR cache is opt-in per component (defense in depth against potential bugs)
+    cache_opts =
+      case Keyword.get(opts, :ssr_cache, false) do
+        true -> []
+        opts when is_list(opts) -> opts
+        _ -> nil
+      end
+
     quote do
       use Phoenix.LiveComponent
 
       @ssr_strategy unquote(ssr_strategy)
+      @cache_opts unquote(cache_opts)
 
       # Dialyzer will warn about the SSR check in modules where ssr_strategy is :none,
       # but this is intentional - the check is compiled differently for each module
@@ -139,13 +148,67 @@ defmodule LiveReactIslands.Component do
                 """
 
               renderer_module ->
-                case renderer_module.render_component(
-                       component_name,
-                       assigns.id,
-                       props,
-                       globals,
-                       @ssr_strategy
-                     ) do
+                # Check if SSR caching is configured globally
+                cache_module = Application.get_env(:live_react_islands, :ssr_cache)
+
+                # Merge component cache config with runtime overrides
+                component_cache_opts = @cache_opts
+                runtime_cache_opts = Map.get(assigns, :ssr_cache_opts, [])
+
+                cache_opts =
+                  if component_cache_opts do
+                    Keyword.merge(component_cache_opts, runtime_cache_opts)
+                  else
+                    runtime_cache_opts
+                  end
+
+                # Determine if user wants caching (component opted in or runtime opts provided)
+                wants_cache = is_list(component_cache_opts) or runtime_cache_opts != []
+
+                # Determine if caching should be used (wants cache AND cache module configured)
+                use_cache = cache_module && wants_cache
+
+                # Warn if cache requested but no cache module configured
+                if wants_cache and is_nil(cache_module) do
+                  require Logger
+
+                  Logger.warning(
+                    "Island '#{component_name}' has caching enabled but :ssr_cache is not configured. " <>
+                      "Caching will be skipped. Configure :ssr_cache in config.exs to enable caching."
+                  )
+                end
+
+                # Use cache only if component opted in AND cache module is configured
+                result =
+                  if use_cache do
+                    # Set default id_in_key if not specified
+                    cache_opts_with_defaults = Keyword.put_new(cache_opts, :id_in_key, false)
+
+                    # Shell caching: use ssr_props/ssr_globals for rendering, but cache based on real data
+                    ssr_props = Keyword.get(cache_opts_with_defaults, :ssr_props, props)
+                    ssr_globals = Keyword.get(cache_opts_with_defaults, :ssr_globals, globals)
+
+                    cache_module.get_or_render(
+                      component_name,
+                      assigns.id,
+                      ssr_props,
+                      ssr_globals,
+                      @ssr_strategy,
+                      renderer_module,
+                      cache_opts_with_defaults
+                    )
+                  else
+                    # No caching - call renderer directly
+                    renderer_module.render_component(
+                      component_name,
+                      assigns.id,
+                      props,
+                      globals,
+                      @ssr_strategy
+                    )
+                  end
+
+                case result do
                   {:ok, html} ->
                     html
 

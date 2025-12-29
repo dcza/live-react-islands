@@ -1,3 +1,4 @@
 import Counter from "./Counter";
+import ExpensiveCounter from "./ExpensiveCounter";
 
-export default { Counter };
+export default { Counter, ExpensiveCounter };

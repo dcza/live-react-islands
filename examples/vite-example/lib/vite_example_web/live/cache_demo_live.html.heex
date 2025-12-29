@@ -1,0 +1,107 @@
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-4xl font-bold text-center mb-4 text-gray-800 dark:text-gray-100">
+      SSR Cache Demo
+    </h1>
+    <p class="text-gray-600 dark:text-gray-300 text-center mb-8 max-w-2xl mx-auto">
+      Demonstrating LiveReactIslands SSR caching with <%= @island_count %> islands. Each island renders fibonacci(30) during SSR (~10-50ms per island).
+    </p>
+
+    <!-- Stats Panel -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md dark:shadow-slate-900/50 p-6 mb-8">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Cache Statistics</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <div class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Cache Entries</div>
+          <div class="text-3xl font-bold text-blue-700 dark:text-blue-300"><%= @cache_stats.size %></div>
+          <div class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            Expected: 1 (all <%= @island_count %> islands share same cache key)
+          </div>
+        </div>
+
+        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+          <div class="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">Memory Usage</div>
+          <div class="text-3xl font-bold text-purple-700 dark:text-purple-300">
+            <%= format_bytes(@cache_stats.memory) %>
+          </div>
+          <div class="text-xs text-purple-600 dark:text-purple-400 mt-1">ETS table memory</div>
+        </div>
+
+        <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
+          <div class="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1">Last Render Time</div>
+          <div class="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+            <%= if @last_render_time, do: "#{@last_render_time}ms", else: "—" %>
+          </div>
+          <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+            <%= if @cache_stats.size > 0, do: "Next: ~instant (cache hit)", else: "Click remount to test" %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex flex-wrap gap-4">
+        <button
+          phx-click="remount_islands"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg font-medium transition-colors shadow-sm"
+        >
+          🔄 Remount Islands
+        </button>
+
+        <button
+          phx-click="clear_cache"
+          class="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white rounded-lg font-medium transition-colors shadow-sm"
+        >
+          🗑️ Clear Cache
+        </button>
+
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Count:</label>
+          <select
+            phx-change="change_count"
+            name="count"
+            class="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+          >
+            <option value="10" selected={@island_count == 10}>10 islands</option>
+            <option value="50" selected={@island_count == 50}>50 islands</option>
+            <option value="100" selected={@island_count == 100}>100 islands</option>
+            <option value="500" selected={@island_count == 500}>500 islands</option>
+            <option value="1000" selected={@island_count == 1000}>1000 islands</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl shadow-sm p-6 mb-8">
+      <h3 class="font-semibold text-yellow-900 dark:text-yellow-200 mb-3">How to Test:</h3>
+      <ol class="list-decimal list-inside space-y-2 text-sm text-yellow-800 dark:text-yellow-300">
+        <li>Click "Remount Islands" - first render will be slow (each island runs fibonacci(30) in SSR)</li>
+        <li>Click "Remount Islands" again - should be instant (cache hit!)</li>
+        <li>Notice only 1 cache entry despite <%= @island_count %> islands (same props = same cache key)</li>
+        <li>Try different island counts to see cache performance at scale</li>
+        <li>"Clear Cache" forces next remount to re-render everything</li>
+      </ol>
+    </div>
+
+    <!-- Islands Grid -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md dark:shadow-slate-900/50 p-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+        Islands (scaled down with transform:scale)
+      </h2>
+
+      <div class="grid grid-cols-10 gap-1">
+        <%= for i <- 1..@island_count do %>
+          <div style="transform: scale(0.15); transform-origin: top left; width: 500px; height: 200px;">
+            <.live_component
+              module={ExpensiveCounter}
+              id={"counter-#{@remount_key}-#{i}"}
+              count={0}
+              title={"##{i}"}
+            />
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

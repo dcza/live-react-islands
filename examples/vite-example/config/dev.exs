@@ -12,7 +12,10 @@ config :vite_example, dev_routes: true
 
 # Configure SSR Vite backend for development
 config :live_react_islands,
-  ssr_renderer: LiveReactIslands.SSR.ViteRenderer
+  ssr_renderer: LiveReactIslands.SSR.ViteRenderer,
+  ssr_cache: LiveReactIslands.SSR.ETSCache,
+  cache_default_ttl: :timer.minutes(5),
+  cache_cleanup_interval: :timer.minutes(1)
 
 config :live_react_islands_ssr_vite,
   vite_url: "http://127.0.0.1:5173",
