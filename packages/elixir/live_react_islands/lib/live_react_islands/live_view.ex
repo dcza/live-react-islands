@@ -1,3 +1,15 @@
+defmodule LiveReactIslands.LiveView.Lifecycle do
+  def on_mount(keys, _params, _session, socket) do
+    Enum.each(keys, fn key ->
+      Process.delete({:global, key})
+    end)
+
+    Process.put({:global, :__version}, 0)
+
+    {:cont, socket}
+  end
+end
+
 defmodule LiveReactIslands.LiveView do
   defmacro __using__(opts) do
     global_keys = Keyword.get(opts, :expose_globals, [])
@@ -6,6 +18,8 @@ defmodule LiveReactIslands.LiveView do
       import Phoenix.Component, except: [assign: 2, assign: 3]
 
       @global_keys unquote(global_keys)
+
+      on_mount({LiveReactIslands.LiveView.Lifecycle, unquote(global_keys)})
 
       def handle_event("lri-g", _params, socket) do
         version = Process.get({:global, :__version}, 0)
