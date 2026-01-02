@@ -13,6 +13,10 @@ defmodule ViteExampleWeb.Router do
   scope "/", ViteExampleWeb do
     pipe_through(:browser)
 
+    scope "/.well-known/appspecific" do
+      get("/com.chrome.devtools.json", PageController, :ignore)
+    end
+
     get("/", PageController, :index)
 
     live_session :default, layout: {ViteExampleWeb.Layouts, :app} do
