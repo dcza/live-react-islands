@@ -123,6 +123,11 @@ export default function liveReactIslandsSSR(
             strategy || "overwrite"
           );
 
+          console.log(
+            `[live-react-islands-ssr] Rendered ${component} (id: ${id}, strategy: ${strategy})`,
+            { props, globals }
+          );
+
           // Return the rendered HTML
           res.statusCode = 200;
           res.setHeader("Content-Type", "application/json");
