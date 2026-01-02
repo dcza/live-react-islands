@@ -155,11 +155,15 @@ defmodule LiveReactIslands.SSR.ETSCache do
       read_concurrency: true
     ])
 
-    cleanup_interval = Keyword.get(opts, :cleanup_interval) ||
-                      Application.get_env(:live_react_islands, :cache_cleanup_interval, :timer.minutes(1))
+    cleanup_interval =
+      Keyword.get(opts, :cleanup_interval) ||
+        Application.get_env(:live_react_islands, :cache_cleanup_interval, :timer.minutes(1))
+
     timer = Process.send_after(self(), :cleanup_expired, cleanup_interval)
 
-    Logger.info("SSR cache: LiveReactIslands.SSR.ETSCache started (cleanup interval: #{cleanup_interval}ms)")
+    Logger.info(
+      "SSR cache: LiveReactIslands.SSR.ETSCache started (cleanup interval: #{cleanup_interval}ms)"
+    )
 
     {:ok, %__MODULE__{cleanup_timer: timer}}
   end
@@ -195,7 +199,9 @@ defmodule LiveReactIslands.SSR.ETSCache do
       Logger.debug("SSR cache cleanup: removed #{deleted} expired entries")
     end
 
-    cleanup_interval = Application.get_env(:live_react_islands, :cache_cleanup_interval, :timer.minutes(1))
+    cleanup_interval =
+      Application.get_env(:live_react_islands, :cache_cleanup_interval, :timer.minutes(1))
+
     timer = Process.send_after(self(), :cleanup_expired, cleanup_interval)
 
     {:noreply, %{state | cleanup_timer: timer}}

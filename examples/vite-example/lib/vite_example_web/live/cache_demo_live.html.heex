@@ -28,13 +28,39 @@
           <div class="text-xs text-purple-600 dark:text-purple-400 mt-1">ETS table memory</div>
         </div>
 
-        <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
-          <div class="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1">Last Render Time</div>
-          <div class="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
-            <%= if @last_render_time, do: "#{@last_render_time}ms", else: "—" %>
+        <div class="mt-10 bg-gray-900 rounded-lg overflow-hidden shadow-2xl border border-gray-700">
+          <div class="bg-gray-800 px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-700">
+            Render Performance Log
           </div>
-          <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-            <%= if @cache_stats.size > 0, do: "Next: ~instant (cache hit)", else: "Click remount to test" %>
+          
+          <div class="p-2 font-mono text-sm max-h-60 overflow-y-auto">
+            <%= for entry <- @render_history do %>
+              <div class="flex justify-between items-center py-1 border-b border-gray-800 last:border-0">
+                <span class="text-gray-500 text-xs">
+                  <%= Calendar.strftime(entry.timestamp, "%H:%M:%S") %>
+                </span>
+                
+                <span class={case entry.type do
+                  :ssr_cold -> "text-red-400"
+                  :ssr_warm -> "text-yellow-400"
+                  :cache_hit -> "text-green-400"
+                end}>
+                  <%= case entry.type do
+                    :ssr_cold -> "● COLD SSR"
+                    :ssr_warm -> "● WARM SSR"
+                    :cache_hit -> "● CACHE HIT"
+                  end %>
+                </span>
+                
+                <span class="text-white font-bold">
+                  <%= entry.time %>ms
+                </span>
+              </div>
+            <% end %>
+            
+            <%= if Enum.empty?(@render_history) do %>
+              <div class="text-gray-600 italic py-4 text-center">Awaiting first render...</div>
+            <% end %>
           </div>
         </div>
       </div>
@@ -55,10 +81,9 @@
           🗑️ Clear Cache
         </button>
 
-        <div class="flex items-center gap-2">
+        <form phx-change="change_count" class="flex items-center gap-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Count:</label>
           <select
-            phx-change="change_count"
             name="count"
             class="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
           >
@@ -68,7 +93,7 @@
             <option value="500" selected={@island_count == 500}>500 islands</option>
             <option value="1000" selected={@island_count == 1000}>1000 islands</option>
           </select>
-        </div>
+        </form>
       </div>
     </div>
 
@@ -87,16 +112,15 @@
     <!-- Islands Grid -->
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md dark:shadow-slate-900/50 p-6">
       <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-        Islands (scaled down with transform:scale)
+        Islands
       </h2>
 
       <div class="grid grid-cols-10 gap-1">
         <%= for i <- 1..@island_count do %>
-          <div style="transform: scale(0.15); transform-origin: top left; width: 500px; height: 200px;">
+          <div style="transform: scale(0.5); transform-origin: top left; width: 200px; height: 100px;">
             <.live_component
-              module={ExpensiveCounter}
+              module={ViteExampleWeb.Components.ExpensiveCounter}
               id={"counter-#{@remount_key}-#{i}"}
-              count={0}
               title={"##{i}"}
             />
           </div>

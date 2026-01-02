@@ -1,8 +1,6 @@
 import { useState } from "react";
 
 const Counter = ({ id, pushEvent, count, title, user }) => {
-  console.log("Rendering Island: ", id);
-
   const [localCount, setLocalCount] = useState(0);
 
   const getInitials = (name) => {
