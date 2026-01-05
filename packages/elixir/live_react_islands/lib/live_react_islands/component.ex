@@ -89,7 +89,7 @@ defmodule LiveReactIslands.Component do
             end
           end)
 
-        # Build schema with ordered prop and global names (only available globals)
+        # Build schema with ordered prop and global names
         prop_names = Enum.map(prop_defs, fn {k, _v} -> Atom.to_string(k) end)
         global_names = Enum.map(available_globals, fn {k, _opt} -> Atom.to_string(k) end)
         schema = %{p: prop_names, g: global_names, i: island_index}
@@ -97,14 +97,28 @@ defmodule LiveReactIslands.Component do
 
         # Build props map for SSR (uses keys)
         props =
-          Enum.reduce(prop_defs, %{}, fn {k, v}, acc ->
-            Map.put(acc, k, assigns[k] || v)
+          Enum.reduce(prop_defs, %{}, fn
+            {k, {:stream, opts}}, acc ->
+              default = Keyword.get(opts, :default, [])
+              initial = assigns[k] || default
+              Map.put(acc, k, initial)
+
+            {k, v}, acc ->
+              Map.put(acc, k, assigns[k] || v)
           end)
 
-        # Build props array (ordered by schema, matching prop_names order)
+        # Build props array (ordered by prop_defs, streams encoded as compact handles)
         props_array =
-          Enum.map(prop_defs, fn {k, v} ->
-            assigns[k] || v
+          prop_defs
+          |> Enum.with_index()
+          |> Enum.map(fn
+            {{k, {:stream, opts}}, idx} ->
+              default = Keyword.get(opts, :default, [])
+              initial = assigns[k] || default
+              %{__s: idx, i: initial}
+
+            {{k, v}, _idx} ->
+              assigns[k] || v
           end)
 
         props_json = Jason.encode!(props_array)
@@ -309,12 +323,16 @@ defmodule LiveReactIslands.Component do
             prop_schema = Enum.map(prop_defs, fn {k, _v} -> k end)
             island_index = LiveReactIslands.Component.get_or_create_island_index(assigns.id)
 
+            regular_prop_keys =
+              prop_defs
+              |> Enum.reject(fn {_k, v} -> match?({:stream, _}, v) end)
+              |> Enum.map(fn {k, _} -> k end)
+
             socket =
               socket
               |> assign(assigns)
               |> assign(:__external_owned, MapSet.new())
-              # Start with all props internal
-              |> assign(:__internal_owned, MapSet.new(Map.keys(prop_defs)))
+              |> assign(:__internal_owned, MapSet.new(regular_prop_keys))
               |> assign(:__prop_schema, prop_schema)
               |> assign(:__island_index, island_index)
 
@@ -323,6 +341,10 @@ defmodule LiveReactIslands.Component do
               Enum.reduce(assigns, socket, fn {key, value}, acc ->
                 cond do
                   key in [:id, :globals, :__external_owned, :__internal_owned] ->
+                    acc
+
+                  # Skip stream props - they're not assignable via regular assigns
+                  match?({:stream, _}, prop_defs[key]) ->
                     acc
 
                   # Handle init_* props - set value but keep internal ownership
@@ -336,12 +358,17 @@ defmodule LiveReactIslands.Component do
                         ArgumentError -> nil
                       end
 
-                    if Map.has_key?(prop_defs, prop_key) do
-                      # Initial mount - just assign, no push (props in data-props)
-                      assign(acc, prop_key, value)
-                    else
-                      raise ArgumentError,
-                            "Unknown init prop `#{key}` - `#{prop_key_string}` is not defined in props"
+                    cond do
+                      match?({:stream, _}, prop_defs[prop_key]) ->
+                        raise ArgumentError,
+                              "Cannot use init_#{prop_key} - streams don't support init_ props"
+
+                      Map.has_key?(prop_defs, prop_key) ->
+                        assign(acc, prop_key, value)
+
+                      true ->
+                        raise ArgumentError,
+                              "Unknown init prop `#{key}` - `#{prop_key_string}` is not defined in props"
                     end
 
                   # Client prop - transfer to external ownership
@@ -364,27 +391,35 @@ defmodule LiveReactIslands.Component do
 
             # Assign unassigned props to default values
             socket =
-              Enum.reduce(prop_defs, socket, fn {prop_key, default_value}, acc ->
-                init_key =
-                  try do
-                    String.to_existing_atom("init_#{prop_key}")
-                  rescue
-                    ArgumentError -> nil
+              Enum.reduce(prop_defs, socket, fn
+                # Stream props - extract default from {:stream, opts}
+                {prop_key, {:stream, opts}}, acc ->
+                  default = Keyword.get(opts, :default, [])
+                  # Streams don't check assigns - always use default on mount
+                  assign(acc, prop_key, default)
+
+                # Regular props
+                {prop_key, default_value}, acc ->
+                  init_key =
+                    try do
+                      String.to_existing_atom("init_#{prop_key}")
+                    rescue
+                      ArgumentError -> nil
+                    end
+
+                  cond do
+                    # Already processed as regular prop
+                    Map.has_key?(assigns, prop_key) ->
+                      acc
+
+                    # Already processed as init_* prop
+                    init_key && Map.has_key?(assigns, init_key) ->
+                      acc
+
+                    true ->
+                      # Initial mount - just assign default, no push
+                      assign(acc, prop_key, default_value)
                   end
-
-                cond do
-                  # Already processed as regular prop
-                  Map.has_key?(assigns, prop_key) ->
-                    acc
-
-                  # Already processed as init_* prop
-                  init_key && Map.has_key?(assigns, init_key) ->
-                    acc
-
-                  true ->
-                    # Initial mount - just assign default, no push
-                    assign(acc, prop_key, default_value)
-                end
               end)
 
             {:ok, socket}
@@ -438,6 +473,57 @@ defmodule LiveReactIslands.Component do
       end
 
       defoverridable handle_assign: 4
+
+      # Stream helper functions
+
+      @doc """
+      Insert a new entry into a stream.
+      The entry must have an `id` field for updates/deletes to work.
+      """
+      defp stream_insert(socket, stream_name, entry) do
+        stream_event(socket, stream_name, "i", entry)
+      end
+
+      @doc """
+      Update an existing entry in a stream by its id.
+      The entry must have an `id` field matching an existing entry.
+      """
+      defp stream_update(socket, stream_name, entry) do
+        stream_event(socket, stream_name, "u", entry)
+      end
+
+      @doc """
+      Delete an entry from a stream by its id.
+      Pass just the id value, not the full entry.
+      """
+      defp stream_delete(socket, stream_name, id) do
+        stream_event(socket, stream_name, "d", id)
+      end
+
+      @doc """
+      Reset a stream, clearing all entries.
+      """
+      defp stream_reset(socket, stream_name) do
+        stream_event(socket, stream_name, "r", nil)
+      end
+
+      defp stream_event(socket, stream_name, action, data) do
+        prop_defs = unquote(prop_defs)
+
+        unless match?({:stream, _}, prop_defs[stream_name]) do
+          raise ArgumentError, """
+          Unknown stream `#{stream_name}` for this component.
+          Only props defined as {:stream, opts} can be used with stream_* functions.
+          """
+        end
+
+        prop_schema = Map.get(socket.assigns, :__prop_schema, [])
+        prop_index = Enum.find_index(prop_schema, &(&1 == stream_name))
+        island_index = Map.get(socket.assigns, :__island_index)
+
+        payload = %{s: prop_index, a: action, d: data, i: island_index}
+        push_event(socket, "lri-s", payload)
+      end
     end
   end
 end

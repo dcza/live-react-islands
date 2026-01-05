@@ -148,17 +148,17 @@ defmodule MyAppWeb.Components.ThemedCounter do
   use LiveReactIslands.Component,
     component: "ThemedCounter",
     props: %{count: 0},
-    globals: [:theme, :user]  # Request globals you need
+    globals: [:theme, :user?]  # user is optional
 end
 ```
 
-React Component:
+Add `?` suffix to make a global optional. This allows the island to be used in LiveViews that don't expose that global:
 
 ```jsx
 function ThemedCounter({ theme, user, count, pushEvent }) {
   return (
     <div className={theme}>
-      <p>Welcome, {user.name}!</p>
+      {user && <p>Welcome, {user.name}!</p>}
       <p>Count: {count}</p>
     </div>
   );
@@ -166,6 +166,81 @@ function ThemedCounter({ theme, user, count, pushEvent }) {
 ```
 
 When globals change in LiveView, all islands that requested those globals automatically re-render.
+
+### Streams
+
+Streams are special props that provide efficient real-time data updates without standard LiveView diffing. Like Phoenix streams items are not kept in memory on the server side. Use streams for append-heavy data like chat messages, notifications, or activity feeds.
+
+Elixir - Define a stream prop:
+
+```elixir
+defmodule MyAppWeb.Components.ChatIsland do
+  use LiveReactIslands.Component,
+    component: "Chat",
+    props: %{
+      title: "Chat Room",
+      messages: {:stream, default: []}
+    }
+
+  def handle_event("send_message", %{"text" => text}, socket) do
+    message = %{id: System.unique_integer(), text: text, user: "Alice"}
+    {:noreply, stream_insert(socket, :messages, message)}
+  end
+
+  def handle_event("delete_message", %{"id" => id}, socket) do
+    {:noreply, stream_delete(socket, :messages, id)}
+  end
+
+  def handle_event("clear_all", _params, socket) do
+    {:noreply, stream_reset(socket, :messages)}
+  end
+end
+```
+
+Stream helper functions:
+
+- `stream_insert(socket, stream_name, entry)` - Add entry (must have `id` field)
+- `stream_update(socket, stream_name, entry)` - Update entry by id
+- `stream_delete(socket, stream_name, id)` - Remove entry by id
+- `stream_reset(socket, stream_name)` - Clear all entries
+
+React - Consume with `useStream`:
+
+```jsx
+import { useStream } from "@live-react-islands/core";
+
+function Chat({ title, messages, pushEvent }) {
+  const items = useStream(messages, { limit: 100 });
+
+  return (
+    <div>
+      <h2>{title}</h2>
+      {items.map((msg) => (
+        <div key={msg.id}>
+          <span>
+            {msg.user}: {msg.text}
+          </span>
+          <button onClick={() => pushEvent("delete_message", { id: msg.id })}>
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+Options for `useStream`:
+
+- `limit` - Maximum items to keep (FIFO eviction)
+- `capper` - Custom eviction function for complex logic (e.g., keep top scores)
+
+```jsx
+// Keep only top 10 scores
+const scores = useStream(leaderboard, {
+  capper: (items) => items.sort((a, b) => b.score - a.score).slice(0, 10),
+});
+```
 
 Create an `islands/index.js` file to export all islands, ensuring client and server use the same island map:
 

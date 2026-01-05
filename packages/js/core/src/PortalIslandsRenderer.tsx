@@ -5,6 +5,7 @@ import type {
   SharedIslandsRendererProps,
   IslandStoreAccess,
 } from "./types";
+import { IslandContextProvider } from "./context";
 
 const PortalIsland = memo(
   ({
@@ -66,13 +67,22 @@ const PortalIsland = memo(
 
     const mergedProps = { ...relevantGlobals, ...currentProps };
 
+    const contextValue = useMemo(() => ({ id, storeAccess }), [id, storeAccess]);
+
     const islandNode = (
       <MemoizedComponent {...mergedProps} id={id} pushEvent={pushEvent} />
     );
+
+    const withContext = (
+      <IslandContextProvider.Provider value={contextValue}>
+        {islandNode}
+      </IslandContextProvider.Provider>
+    );
+
     const content = MemoizedContextProvider ? (
-      <MemoizedContextProvider>{islandNode}</MemoizedContextProvider>
+      <MemoizedContextProvider>{withContext}</MemoizedContextProvider>
     ) : (
-      islandNode
+      withContext
     );
 
     return createPortal(content, el);

@@ -29,6 +29,9 @@ describe("PortalIslandsRenderer", () => {
     let sharedIslands: Record<string, IslandData> = {};
     const sharedIslandsListeners = new Set<() => void>();
 
+    const streamsStore = new Map<string, any[]>();
+    const streamsListeners = new Map<string, Set<() => void>>();
+
     const storeAccess: IslandStoreAccess = {
       getProps: (id: string) => propsMap.get(id) || null,
       subscribeToProps: (cb: () => void) => {
@@ -44,6 +47,17 @@ describe("PortalIslandsRenderer", () => {
       subscribeToSharedIslands: (cb: () => void) => {
         sharedIslandsListeners.add(cb);
         return () => sharedIslandsListeners.delete(cb);
+      },
+      getStreamItems: (islandId: string, streamName: string) => {
+        return streamsStore.get(`${islandId}:${streamName}`) || [];
+      },
+      subscribeToStream: (islandId: string, streamName: string, cb: () => void, _config?: any) => {
+        const key = `${islandId}:${streamName}`;
+        if (!streamsListeners.has(key)) {
+          streamsListeners.set(key, new Set());
+        }
+        streamsListeners.get(key)!.add(cb);
+        return () => streamsListeners.get(key)?.delete(cb);
       },
     };
 

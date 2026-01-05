@@ -5,7 +5,9 @@ import {
   type PushEventFn,
   type ContextProviderComponent,
   type IslandComponent,
+  type StreamHandle,
   NullContextProvider,
+  StreamAction,
 } from "./types";
 
 // ============================================================================
@@ -141,7 +143,23 @@ export function createHooks({
         try {
           const propsArray = JSON.parse(propsData);
           schema.p.forEach((propName, idx) => {
-            initialProps[propName] = propsArray[idx];
+            const value = propsArray[idx];
+            if (value?.__s !== undefined) {
+              const streamName = schema.p[value.__s];
+              managerState = manager.initializeStream(
+                managerState,
+                this.el.id,
+                streamName,
+                value.i
+              );
+              const handle: StreamHandle = {
+                name: streamName,
+                initial: value.i,
+              };
+              initialProps[propName] = handle;
+            } else {
+              initialProps[propName] = value;
+            }
           });
         } catch (e) {
           console.error(
@@ -234,6 +252,24 @@ export function createHooks({
             managerState,
             this.el.id,
             props
+          );
+        }
+      );
+
+      this.handleEvent(
+        "lri-s",
+        (payload: { s: number; a: StreamAction; d: any; i: number }) => {
+          if (payload.i !== schema.i) return;
+
+          const streamName = schema.p[payload.s];
+          if (!streamName) return;
+
+          managerState = manager.updateStream(
+            managerState,
+            this.el.id,
+            streamName,
+            payload.a,
+            payload.d
           );
         }
       );

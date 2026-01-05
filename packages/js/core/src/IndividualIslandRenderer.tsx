@@ -1,5 +1,6 @@
 import React, { useSyncExternalStore, memo, useMemo } from "react";
 import type { IndividualIslandsRendererProps } from "./types";
+import { IslandContextProvider } from "./context";
 
 export const IndividualIslandRenderer: React.FC<
   IndividualIslandsRendererProps
@@ -51,6 +52,8 @@ export const IndividualIslandRenderer: React.FC<
     });
   }
 
+  const contextValue = useMemo(() => ({ id, storeAccess }), [id, storeAccess]);
+
   const islandNode = (
     <MemoizedComponent
       {...filteredGlobals}
@@ -59,10 +62,17 @@ export const IndividualIslandRenderer: React.FC<
       pushEvent={pushEvent}
     />
   );
+
+  const withContext = (
+    <IslandContextProvider.Provider value={contextValue}>
+      {islandNode}
+    </IslandContextProvider.Provider>
+  );
+
   return MemoizedContextProvider ? (
-    <MemoizedContextProvider>{islandNode}</MemoizedContextProvider>
+    <MemoizedContextProvider>{withContext}</MemoizedContextProvider>
   ) : (
-    islandNode
+    withContext
   );
 };
 

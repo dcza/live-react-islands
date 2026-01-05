@@ -1,13 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import type {
+import {
   ContextProviderComponent,
   IslandData,
   SharedIslandsRendererComponent,
   IndividualIslandsRendererComponent,
   IslandStoreAccess,
   IndividualIslandsRendererProps,
+  StreamAction,
+  StreamConfig,
 } from "./types";
 import { PortalIslandsRenderer } from "./PortalIslandsRenderer";
 import { IndividualIslandRenderer } from "./IndividualIslandRenderer";
@@ -26,6 +28,9 @@ interface ManagerState {
   globalsListeners: Set<() => void>;
   sharedIslandsRef: React.MutableRefObject<Record<string, IslandData>>;
   sharedIslandsListeners: Set<() => void>;
+  streamsStore: Map<string, any[]>;
+  streamsListeners: Map<string, Set<() => void>>;
+  streamConfigs: Map<string, StreamConfig>;
   roots: Record<string, any>;
   storeAccess: IslandStoreAccess;
 }
@@ -49,6 +54,19 @@ export interface Manager {
   updateGlobals: (
     state: ManagerState,
     globals: Record<string, any>
+  ) => ManagerState;
+  initializeStream: (
+    state: ManagerState,
+    islandId: string,
+    streamName: string,
+    initialItems: any[]
+  ) => ManagerState;
+  updateStream: (
+    state: ManagerState,
+    islandId: string,
+    streamName: string,
+    action: StreamAction,
+    data: any
   ) => ManagerState;
 }
 
@@ -147,15 +165,19 @@ const ManagerObj: Manager = {
     const rootElement = getOrCreateSharedRootElement();
     const root = ReactDOM.createRoot(rootElement);
 
-    // Create stores and listeners
     const propsStore = new Map<string, Record<string, any>>();
     const propsListeners = new Set<() => void>();
     const globalsRef = { current: null as Record<string, any> | null };
     const globalsListeners = new Set<() => void>();
     const sharedIslandsRef = { current: {} as Record<string, IslandData> };
     const sharedIslandsListeners = new Set<() => void>();
+    const streamsStore = new Map<string, any[]>();
+    const streamsListeners = new Map<string, Set<() => void>>();
+    const streamConfigs = new Map<string, StreamConfig>();
 
-    // Create storeAccess as a closure over the stores/listeners
+    const getStreamKey = (islandId: string, streamName: string) =>
+      `${islandId}:${streamName}`;
+
     const storeAccess: IslandStoreAccess = {
       getProps: (islandId: string) => propsStore.get(islandId) || null,
       subscribeToProps: (cb: () => void) => {
@@ -172,9 +194,33 @@ const ManagerObj: Manager = {
         sharedIslandsListeners.add(cb);
         return () => sharedIslandsListeners.delete(cb);
       },
+      getStreamItems: (islandId: string, streamName: string) => {
+        const key = getStreamKey(islandId, streamName);
+        return streamsStore.get(key) || [];
+      },
+      subscribeToStream: (
+        islandId: string,
+        streamName: string,
+        cb: () => void,
+        config?: StreamConfig
+      ) => {
+        const key = getStreamKey(islandId, streamName);
+        if (config) {
+          streamConfigs.set(key, config);
+        }
+        if (!streamsListeners.has(key)) {
+          streamsListeners.set(key, new Set());
+        }
+        streamsListeners.get(key)!.add(cb);
+        return () => {
+          streamsListeners.get(key)?.delete(cb);
+          if (streamsListeners.get(key)?.size === 0) {
+            streamConfigs.delete(key);
+          }
+        };
+      },
     };
 
-    // Create the state
     const state: ManagerState = {
       propsStore,
       globalsRef,
@@ -182,6 +228,9 @@ const ManagerObj: Manager = {
       globalsListeners,
       sharedIslandsRef,
       sharedIslandsListeners,
+      streamsStore,
+      streamsListeners,
+      streamConfigs,
       roots: { [SHARED_ROOT_ID]: root },
       storeAccess,
     };
@@ -217,6 +266,15 @@ const ManagerObj: Manager = {
   unmountIsland: (state, id) => {
     state.propsStore.delete(id);
 
+    const streamPrefix = `${id}:`;
+    for (const key of state.streamsStore.keys()) {
+      if (key.startsWith(streamPrefix)) {
+        state.streamsStore.delete(key);
+        state.streamsListeners.delete(key);
+        state.streamConfigs.delete(key);
+      }
+    }
+
     if (state.roots[id]) {
       state.roots[id].unmount();
       const { [id]: removedRoot, ...remainingRoots } = state.roots;
@@ -225,7 +283,6 @@ const ManagerObj: Manager = {
         roots: remainingRoots,
       };
     } else {
-      // Create new object to trigger reference change
       const { [id]: removed, ...remaining } = state.sharedIslandsRef.current;
       state.sharedIslandsRef.current = remaining;
       state.sharedIslandsListeners.forEach((cb) => cb());
@@ -249,6 +306,45 @@ const ManagerObj: Manager = {
       state.globalsListeners.forEach((cb) => cb());
     }
 
+    return state;
+  },
+  initializeStream: (state, islandId, streamName, initialItems) => {
+    const key = `${islandId}:${streamName}`;
+    state.streamsStore.set(key, [...initialItems]);
+    return state;
+  },
+  updateStream: (state, islandId, streamName, action, data) => {
+    const key = `${islandId}:${streamName}`;
+    let items = state.streamsStore.get(key) || [];
+    const config = state.streamConfigs.get(key);
+
+    switch (action) {
+      case StreamAction.Insert:
+        items = [data, ...items];
+        break;
+      case StreamAction.Update:
+        const idx = items.findIndex((item) => item.id === data.id);
+        if (idx !== -1) {
+          items = [...items];
+          items[idx] = { ...items[idx], ...data };
+        }
+        break;
+      case StreamAction.Delete:
+        items = items.filter((item) => item.id !== data);
+        break;
+      case StreamAction.Reset:
+        items = [];
+        break;
+    }
+
+    if (config?.capper) {
+      items = config.capper(items);
+    } else if (config?.limit !== undefined && items.length > config.limit) {
+      items = items.slice(0, config.limit);
+    }
+
+    state.streamsStore.set(key, items);
+    state.streamsListeners.get(key)?.forEach((cb) => cb());
     return state;
   },
 };

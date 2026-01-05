@@ -21,6 +21,11 @@ export type SSRStrategy = "none" | "overwrite" | "hydrate_root";
 
 export type PushEventFn = (eventName: string, payload: any) => void;
 
+export interface StreamConfig {
+  limit?: number;
+  capper?: (items: any[]) => any[];
+}
+
 export interface IslandStoreAccess {
   getProps: (islandId: string) => Record<string, any> | null;
   subscribeToProps: (callback: () => void) => () => void;
@@ -28,6 +33,25 @@ export interface IslandStoreAccess {
   subscribeToGlobals: (callback: () => void) => () => void;
   getSharedIslands: () => Record<string, IslandData>;
   subscribeToSharedIslands: (callback: () => void) => () => void;
+  getStreamItems: (islandId: string, streamName: string) => any[];
+  subscribeToStream: (
+    islandId: string,
+    streamName: string,
+    callback: () => void,
+    config?: StreamConfig
+  ) => () => void;
+}
+
+export enum StreamAction {
+  Insert = "i",
+  Update = "u",
+  Delete = "d",
+  Reset = "r",
+}
+
+export interface StreamHandle {
+  name: string;
+  initial: any[];
 }
 
 export interface IslandData {
