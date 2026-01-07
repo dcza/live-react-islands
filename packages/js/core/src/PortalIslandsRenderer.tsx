@@ -30,6 +30,10 @@ const PortalIsland = memo(
       () => (ContextProvider ? memo(ContextProvider) : null),
       [ContextProvider]
     );
+    const contextValue = useMemo(
+      () => ({ id, storeAccess }),
+      [id, storeAccess]
+    );
 
     const currentProps = useSyncExternalStore(
       storeAccess.subscribeToProps,
@@ -66,8 +70,6 @@ const PortalIsland = memo(
     }
 
     const mergedProps = { ...relevantGlobals, ...currentProps };
-
-    const contextValue = useMemo(() => ({ id, storeAccess }), [id, storeAccess]);
 
     const islandNode = (
       <MemoizedComponent {...mergedProps} id={id} pushEvent={pushEvent} />

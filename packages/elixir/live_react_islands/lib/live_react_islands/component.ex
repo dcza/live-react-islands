@@ -422,11 +422,20 @@ defmodule LiveReactIslands.Component do
                   end
               end)
 
+            # Call init/2 for dynamic prop initialization
+            socket = init(assigns, socket)
+
             {:ok, socket}
         end
       end
 
-      defoverridable update: 2
+      @doc """
+      Called once on first mount, before render.
+      Override to set up dynamic prop values.
+      """
+      def init(_assigns, socket), do: socket
+
+      defoverridable update: 2, init: 2
 
       defp update_prop(socket, key, fun, opts \\ [])
 
@@ -476,33 +485,18 @@ defmodule LiveReactIslands.Component do
 
       # Stream helper functions
 
-      @doc """
-      Insert a new entry into a stream.
-      The entry must have an `id` field for updates/deletes to work.
-      """
       defp stream_insert(socket, stream_name, entry) do
         stream_event(socket, stream_name, "i", entry)
       end
 
-      @doc """
-      Update an existing entry in a stream by its id.
-      The entry must have an `id` field matching an existing entry.
-      """
       defp stream_update(socket, stream_name, entry) do
         stream_event(socket, stream_name, "u", entry)
       end
 
-      @doc """
-      Delete an entry from a stream by its id.
-      Pass just the id value, not the full entry.
-      """
       defp stream_delete(socket, stream_name, id) do
         stream_event(socket, stream_name, "d", id)
       end
 
-      @doc """
-      Reset a stream, clearing all entries.
-      """
       defp stream_reset(socket, stream_name) do
         stream_event(socket, stream_name, "r", nil)
       end
@@ -523,6 +517,24 @@ defmodule LiveReactIslands.Component do
 
         payload = %{s: prop_index, a: action, d: data, i: island_index}
         push_event(socket, "lri-s", payload)
+      end
+
+      # Form helper functions
+
+      defp init_form(socket, prop, changeset, opts \\ []) do
+        if Code.ensure_loaded?(LiveReactIslands.Form) do
+          update_prop(socket, prop, LiveReactIslands.Form.to_init_props(changeset, opts))
+        else
+          raise "init_form/4 requires Ecto"
+        end
+      end
+
+      defp update_form(socket, prop, changeset, opts \\ []) do
+        if Code.ensure_loaded?(LiveReactIslands.Form) do
+          update_prop(socket, prop, LiveReactIslands.Form.to_props(changeset, opts))
+        else
+          raise "update_form/4 requires Ecto"
+        end
       end
     end
   end

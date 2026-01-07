@@ -26,6 +26,7 @@ defmodule ViteExampleWeb.Router do
       live("/ssr", SSRDemoLive)
       live("/globals", GlobalsDemoLive)
       live("/cache", CacheDemoLive)
+      live("/form", FormDemoLive)
     end
   end
 end

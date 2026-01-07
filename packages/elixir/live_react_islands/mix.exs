@@ -34,6 +34,7 @@ defmodule LiveReactIslands.MixProject do
     [
       {:phoenix_live_view, "~> 1.0"},
       {:jason, "~> 1.4"},
+      {:ecto, "~> 3.10", optional: true},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false}
     ]
   end
