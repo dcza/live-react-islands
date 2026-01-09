@@ -521,21 +521,123 @@ defmodule LiveReactIslands.Component do
 
       # Form helper functions
 
+      # Initialize a form prop with a changeset. Sends full schema info to React.
+      # Version is set to 0 (reset state).
+      # Options:
+      #   - `:translator` - function to translate errors
       defp init_form(socket, prop, changeset, opts \\ []) do
         if Code.ensure_loaded?(LiveReactIslands.Form) do
-          update_prop(socket, prop, LiveReactIslands.Form.to_init_props(changeset, opts))
+          # Reset version to 0 for this form prop
+          form_versions = Map.get(socket.assigns, :__lri_form_versions, %{})
+          new_versions = Map.put(form_versions, prop, 0)
+
+          socket
+          |> assign(:__lri_form_versions, new_versions)
+          |> update_prop(prop, LiveReactIslands.Form.to_init_props(changeset, prop, 0, opts))
         else
           raise "init_form/4 requires Ecto"
         end
       end
 
-      defp update_form(socket, prop, changeset, opts \\ []) do
+      # Update a form prop with new changeset data. Echoes back the client version.
+      # Can be called in two ways:
+      # - `update_form(socket, prop, changeset)` - uses shadow version from last client event
+      # - `update_form(socket, prop, changeset, version)` - explicit version (backward compat)
+      # - `update_form(socket, prop, changeset, version, opts)` - explicit version with options
+      # Options:
+      #   - `:translator` - function to translate errors
+      defp update_form(socket, prop, changeset, version_or_opts \\ nil, opts \\ [])
+
+      # update_form(socket, prop, changeset) - use shadow version
+      defp update_form(socket, prop, changeset, nil, []) do
         if Code.ensure_loaded?(LiveReactIslands.Form) do
-          update_prop(socket, prop, LiveReactIslands.Form.to_props(changeset, opts))
+          form_versions = Map.get(socket.assigns, :__lri_form_versions, %{})
+          version = Map.get(form_versions, prop, 0)
+          update_prop(socket, prop, LiveReactIslands.Form.to_props(changeset, prop, version, []))
         else
-          raise "update_form/4 requires Ecto"
+          raise "update_form requires Ecto"
         end
       end
+
+      # update_form(socket, prop, changeset, opts) when opts is a keyword list
+      defp update_form(socket, prop, changeset, opts, []) when is_list(opts) do
+        if Code.ensure_loaded?(LiveReactIslands.Form) do
+          form_versions = Map.get(socket.assigns, :__lri_form_versions, %{})
+          version = Map.get(form_versions, prop, 0)
+          update_prop(socket, prop, LiveReactIslands.Form.to_props(changeset, prop, version, opts))
+        else
+          raise "update_form requires Ecto"
+        end
+      end
+
+      # update_form(socket, prop, changeset, version) - explicit version (backward compat)
+      defp update_form(socket, prop, changeset, version, []) when is_integer(version) do
+        if Code.ensure_loaded?(LiveReactIslands.Form) do
+          # Store the version in shadow assign for consistency
+          form_versions = Map.get(socket.assigns, :__lri_form_versions, %{})
+          new_versions = Map.put(form_versions, prop, version)
+
+          socket
+          |> assign(:__lri_form_versions, new_versions)
+          |> update_prop(prop, LiveReactIslands.Form.to_props(changeset, prop, version, []))
+        else
+          raise "update_form requires Ecto"
+        end
+      end
+
+      # update_form(socket, prop, changeset, version, opts) - explicit version with opts
+      defp update_form(socket, prop, changeset, version, opts)
+           when is_integer(version) and is_list(opts) do
+        if Code.ensure_loaded?(LiveReactIslands.Form) do
+          # Store the version in shadow assign for consistency
+          form_versions = Map.get(socket.assigns, :__lri_form_versions, %{})
+          new_versions = Map.put(form_versions, prop, version)
+
+          socket
+          |> assign(:__lri_form_versions, new_versions)
+          |> update_prop(prop, LiveReactIslands.Form.to_props(changeset, prop, version, opts))
+        else
+          raise "update_form requires Ecto"
+        end
+      end
+
+      # Shadow event handler for form events. Automatically extracts version and
+      # dispatches to user's handle_form/4 callback.
+      # Client sends: pushEvent("lri_form", {event: "validate", prop: "form", attrs: {...}, _v: 5})
+      # Server receives and calls: handle_form(:validate, :form, %{...}, socket)
+      @impl true
+      def handle_event(
+            "lri_form",
+            %{"event" => event, "prop" => prop, "attrs" => attrs, "_v" => version},
+            socket
+          ) do
+        # Store version in shadow assign
+        prop_atom = String.to_existing_atom(prop)
+        form_versions = Map.get(socket.assigns, :__lri_form_versions, %{})
+        new_versions = Map.put(form_versions, prop_atom, version)
+        socket = assign(socket, :__lri_form_versions, new_versions)
+
+        # Dispatch to user's handle_form callback
+        event_atom = String.to_existing_atom(event)
+        handle_form(event_atom, prop_atom, attrs, socket)
+      end
+
+      @doc """
+      Override this callback to handle form events.
+      Called by the shadow event handler after extracting version.
+
+      ## Example
+
+          def handle_form(:validate, :form, attrs, socket) do
+            changeset = Contact.changeset(%Contact{}, attrs)
+            {:noreply, update_form(socket, :form, changeset)}
+          end
+      """
+      def handle_form(_event, _prop, _attrs, socket) do
+        {:noreply, socket}
+      end
+
+      defoverridable handle_form: 4
     end
   end
 end

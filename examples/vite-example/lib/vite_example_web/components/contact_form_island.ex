@@ -13,10 +13,10 @@ defmodule ViteExampleWeb.Components.ContactFormIsland do
     |> init_form(:form, changeset)
   end
 
-  def handle_event("validate", params, socket) do
+  def handle_form(:validate, :form, attrs, socket) do
     changeset =
       %Contact{}
-      |> Contact.changeset(params)
+      |> Contact.changeset(attrs)
       |> Map.put(:action, :validate)
 
     {:noreply,
@@ -25,10 +25,10 @@ defmodule ViteExampleWeb.Components.ContactFormIsland do
      |> update_form(:form, changeset)}
   end
 
-  def handle_event("submit", params, socket) do
+  def handle_form(:submit, :form, attrs, socket) do
     changeset =
       %Contact{}
-      |> Contact.changeset(params)
+      |> Contact.changeset(attrs)
       |> Map.put(:action, :validate)
 
     if changeset.valid? do

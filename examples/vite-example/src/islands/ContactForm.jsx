@@ -1,17 +1,21 @@
 import { useForm } from "@live-react-islands/core";
 
 const ContactForm = ({ id, pushEvent, form }) => {
-  const { getFieldProps, getError, isRequired, handleSubmit, values } = useForm(
-    form,
-    {
-      onChange: (values) => pushEvent("validate", values),
-      onSubmit: (values) => pushEvent("submit", values),
-    }
-  );
+  const {
+    getFieldProps,
+    getError,
+    isRequired,
+    isTouched,
+    handleSubmit,
+    isSyncing,
+    isValid,
+  } = useForm(form, pushEvent);
+
+  const hasError = (name) => isTouched(name) && getError(name);
 
   const inputClass = (name) =>
     `w-full px-4 py-2 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-      getError(name)
+      hasError(name)
         ? "border-red-400 bg-red-50"
         : "border-gray-300 hover:border-gray-400"
     }`;
@@ -36,8 +40,10 @@ const ContactForm = ({ id, pushEvent, form }) => {
               </p>
             </div>
           </div>
-          <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-            #{id}
+          <div className="flex items-center space-x-2">
+            <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+              #{id}
+            </div>
           </div>
         </div>
       </div>
@@ -55,7 +61,7 @@ const ContactForm = ({ id, pushEvent, form }) => {
             className={inputClass("name")}
             placeholder="Your name"
           />
-          {getError("name") && (
+          {hasError("name") && (
             <p className="mt-1 text-sm text-red-600">{getError("name")}</p>
           )}
         </div>
@@ -72,7 +78,7 @@ const ContactForm = ({ id, pushEvent, form }) => {
             className={inputClass("email")}
             placeholder="you@example.com"
           />
-          {getError("email") && (
+          {hasError("email") && (
             <p className="mt-1 text-sm text-red-600">{getError("email")}</p>
           )}
         </div>
@@ -89,7 +95,7 @@ const ContactForm = ({ id, pushEvent, form }) => {
             className={inputClass("message")}
             placeholder="Your message (min 10 characters)"
           />
-          {getError("message") && (
+          {hasError("message") && (
             <p className="mt-1 text-sm text-red-600">{getError("message")}</p>
           )}
         </div>
@@ -110,21 +116,25 @@ const ContactForm = ({ id, pushEvent, form }) => {
           </label>
         </div>
 
-        {/* Submit */}
+        {/* Submit - Validation Lock: disabled until server confirms validity */}
         <button
           type="submit"
-          className="w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm hover:shadow-md"
+          disabled={!isValid}
+          className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm ${
+            isValid
+              ? "bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white hover:shadow-md"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
         >
-          Send Message
+          {isValid ? "Send Message" : "Fill Required Fields"}
         </button>
 
-        {/* Debug: Current Values */}
         <div className="pt-3 border-t border-gray-200">
           <p className="text-xs font-medium text-gray-500 mb-1">
             Form State (debug):
           </p>
           <pre className="bg-gray-100 p-2 rounded text-xs text-gray-700 overflow-auto">
-            {JSON.stringify(values, null, 2)}
+            {JSON.stringify(form, null, 2)}
           </pre>
         </div>
       </form>

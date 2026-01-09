@@ -12,14 +12,17 @@ if Code.ensure_loaded?(Ecto.Changeset) do
     Options:
       - `:translator` - function to translate errors, defaults to app config or simple interpolation
     """
-    def to_init_props(%Ecto.Changeset{} = changeset, opts \\ []) do
+    def to_init_props(%Ecto.Changeset{} = changeset, prop_name, version \\ 0, opts \\ []) do
       schema_mod = changeset.data.__struct__
 
       %{
+        __prop: to_string(prop_name),
         types: get_types(schema_mod, changeset),
         required: get_required(changeset),
         values: get_values(changeset),
-        errors: get_errors(changeset, opts)
+        errors: get_errors(changeset, opts),
+        isValid: changeset.valid?,
+        version: version
       }
     end
 
@@ -30,10 +33,13 @@ if Code.ensure_loaded?(Ecto.Changeset) do
     Options:
       - `:translator` - function to translate errors, defaults to app config or simple interpolation
     """
-    def to_props(%Ecto.Changeset{} = changeset, opts \\ []) do
+    def to_props(%Ecto.Changeset{} = changeset, prop_name, version, opts \\ []) do
       %{
+        __prop: to_string(prop_name),
         values: get_values(changeset),
-        errors: get_errors(changeset, opts)
+        errors: get_errors(changeset, opts),
+        isValid: changeset.valid?,
+        version: version
       }
     end
 
