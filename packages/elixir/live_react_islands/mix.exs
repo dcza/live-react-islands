@@ -61,10 +61,11 @@ defmodule LiveReactIslands.MixProject do
 
   defp docs do
     [
-      main: "LiveReactIslands",
+      main: "readme",
       source_ref: "v#{@version}",
       source_url: @source_url,
-      extras: ["README.md"]
+      extras: ["../../../README.md"],
+      assets: %{"../../../docs" => "docs"}
     ]
   end
 end

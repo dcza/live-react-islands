@@ -450,11 +450,11 @@ mix phx.server  # in another terminal
 
 ## Contributing
 
-See [Contributing Guide](./CONTRIBUTING.md).
+See [Contributing Guide](https://github.com/dcza/live-react-islands/blob/main/CONTRIBUTING.md).
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/dcza/live-react-islands/blob/main/LICENSE) for details.
 
 ## Credits
 
