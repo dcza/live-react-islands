@@ -1,4 +1,9 @@
 defmodule LiveReactIslands.Application do
+  @moduledoc """
+  LiveReactIslands only requires to start sub-processes in case SSR is configured.
+  Use without SSR is completely handled by the macros and works on the LiveView processes.
+  """
+
   use Application
   require Logger
 
@@ -12,9 +17,12 @@ defmodule LiveReactIslands.Application do
         # Built-in SSR cache
         LiveReactIslands.SSR.ETSCache ->
           opts = [
-            default_ttl: Application.get_env(:live_react_islands, :cache_default_ttl, :timer.minutes(5)),
-            cleanup_interval: Application.get_env(:live_react_islands, :cache_cleanup_interval, :timer.minutes(1))
+            default_ttl:
+              Application.get_env(:live_react_islands, :cache_default_ttl, :timer.minutes(5)),
+            cleanup_interval:
+              Application.get_env(:live_react_islands, :cache_cleanup_interval, :timer.minutes(1))
           ]
+
           [{LiveReactIslands.SSR.ETSCache, opts}]
 
         # Custom SSR cache: User provides {Mod, Args} or just Mod
@@ -31,6 +39,7 @@ defmodule LiveReactIslands.Application do
         {mod, _args} ->
           Code.ensure_loaded(mod)
           function_exported?(mod, :start_link, 1)
+
         _ ->
           false
       end)

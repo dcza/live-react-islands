@@ -17,8 +17,8 @@ defmodule LiveReactIslands.SSR.Renderer do
   - strategy: SSR strategy (:overwrite or :hydrate_root)
 
   ## Returns
-  - {:ok, html_string} on success
-  - {:error, reason} on failure
+  - `{:ok, html_string}` on success
+  - `{:error, reason}` on failure
   """
   @callback render_component(
               component_name :: String.t(),
