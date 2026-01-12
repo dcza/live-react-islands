@@ -5,6 +5,7 @@ import {
   type PushEventFn,
   type ContextProviderComponent,
   type IslandComponent,
+  type LazyIslandFactory,
   type StreamHandle,
   NullContextProvider,
   StreamAction,
@@ -45,25 +46,52 @@ function createPushEventFn(hook: LiveViewHook): PushEventFn {
 // Helper
 // ============================================================================
 
-const extractIslandConfig = (
+const resolvedComponentsCache = new Map<string, IslandComponent>();
+
+const isLazyFactory = (value: unknown): value is LazyIslandFactory => {
+  if (typeof value !== "function") return false;
+  // Check if it's a React component (has prototype.isReactComponent for class components)
+  if ((value as any).prototype?.isReactComponent) return false;
+  // Check if it's a config object getter (would have Component property)
+  if ((value as any).Component) return false;
+  // Assume zero-arg functions that aren't class components are lazy factories
+  return value.length === 0;
+};
+
+const resolveIslandConfig = async (
   islandsMap: IslandsMap,
   componentName: string,
   defaultContextProvider: ContextProviderComponent
-): {
+): Promise<{
   Component: IslandComponent;
   ContextProvider: ContextProviderComponent;
-} | null => {
+} | null> => {
   const config = islandsMap[componentName];
 
   if (!config) {
     return null;
   }
 
-  // Handle both direct component and config object
+  // Check cache first for lazy-loaded components
+  const cached = resolvedComponentsCache.get(componentName);
+  if (cached) {
+    return { Component: cached, ContextProvider: defaultContextProvider };
+  }
+
+  // Handle lazy factory: () => import("./Component")
+  if (isLazyFactory(config)) {
+    const mod = await config();
+    const Component = mod.default;
+    resolvedComponentsCache.set(componentName, Component);
+    return { Component, ContextProvider: defaultContextProvider };
+  }
+
+  // Handle direct component
   if (typeof config === "function") {
     return { Component: config, ContextProvider: defaultContextProvider };
   }
 
+  // Handle config object
   return {
     Component: config.Component,
     ContextProvider: config.ContextProvider || defaultContextProvider,
@@ -83,6 +111,7 @@ export function createHooks({
   let managerState = manager.initialize({ SharedContextProvider });
 
   let globalsRequested = false;
+  const pendingMounts = new Set<string>();
 
   const Hook: Partial<LiveViewHook> & {
     mounted: (this: LiveViewHook) => void;
@@ -188,18 +217,6 @@ export function createHooks({
         }
       }
 
-      const islandConfig = extractIslandConfig(
-        islandsMap,
-        componentName,
-        SharedContextProvider
-      );
-      if (!islandConfig) {
-        console.error(
-          `[LiveReactIslands] React island '${componentName}' not found`
-        );
-        return;
-      }
-
       let ssrStrategy: SSRStrategy;
       switch (ssrData) {
         case "overwrite":
@@ -213,26 +230,48 @@ export function createHooks({
       }
 
       const pushEvent = createPushEventFn(this);
+      const elId = this.el.id;
+      const el = this.el;
 
-      managerState = manager.updateIslandProps(
-        managerState,
-        this.el.id,
-        initialProps
-      );
+      pendingMounts.add(elId);
 
-      managerState = manager.mountIsland(managerState, {
-        id: this.el.id,
-        el: this.el,
-        Component: islandConfig.Component,
-        ContextProvider: islandConfig.ContextProvider,
-        ssrStrategy,
-        pushEvent,
-        hydrationData:
-          ssrStrategy === "hydrate_root"
-            ? { props: initialProps, globals: initialGlobals }
-            : null,
-        globalKeys: schema.g,
-      });
+      (async () => {
+        const islandConfig = await resolveIslandConfig(
+          islandsMap,
+          componentName,
+          SharedContextProvider
+        );
+
+        if (!pendingMounts.has(elId)) return;
+        pendingMounts.delete(elId);
+
+        if (!islandConfig) {
+          console.error(
+            `[LiveReactIslands] React island '${componentName}' not found`
+          );
+          return;
+        }
+
+        managerState = manager.updateIslandProps(
+          managerState,
+          elId,
+          initialProps
+        );
+
+        managerState = manager.mountIsland(managerState, {
+          id: elId,
+          el,
+          Component: islandConfig.Component,
+          ContextProvider: islandConfig.ContextProvider,
+          ssrStrategy,
+          pushEvent,
+          hydrationData:
+            ssrStrategy === "hydrate_root"
+              ? { props: initialProps, globals: initialGlobals }
+              : null,
+          globalKeys: schema.g,
+        });
+      })();
 
       this.handleEvent(
         "lri-p",
@@ -281,7 +320,7 @@ export function createHooks({
 
     destroyed(this: LiveViewHook) {
       console.log("[Hook] Destroyed:", this.el.id);
-
+      pendingMounts.delete(this.el.id);
       managerState = manager.unmountIsland(managerState, this.el.id);
     },
   };

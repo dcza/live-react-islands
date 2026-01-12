@@ -2,25 +2,49 @@ import React from "react";
 import { renderToString, renderToStaticMarkup } from "react-dom/server";
 import {
   type IslandsMap,
+  type IslandComponent,
   type ContextProviderComponent,
+  type LazyIslandFactory,
   NullContextProvider,
 } from "./types";
 
 export interface ExposeSSROptions {
   islands: IslandsMap;
-  SharedContextProvider: ContextProviderComponent;
+  SharedContextProvider?: ContextProviderComponent;
 }
+
+const isLazyFactory = (value: unknown): value is LazyIslandFactory => {
+  if (typeof value !== "function") return false;
+  if ((value as any).prototype?.isReactComponent) return false;
+  if ((value as any).Component) return false;
+  return value.length === 0;
+};
 
 /**
  * Server-side rendering function for React islands.
  *
  * This function creates SSR renderers for your island components.
  * It works in any JavaScript runtime: Deno, Node, Bun, etc.
+ *
+ * Supports lazy-loaded islands: () => import("./Component")
  */
-export function exposeSSR({
+export async function exposeSSR({
   islands,
   SharedContextProvider = NullContextProvider,
 }: ExposeSSROptions) {
+  // Resolve all lazy imports first
+  const resolvedIslands: Record<string, IslandComponent> = {};
+
+  for (const [name, config] of Object.entries(islands)) {
+    if (isLazyFactory(config)) {
+      const mod = await config();
+      resolvedIslands[name] = mod.default;
+    } else if (typeof config === "function") {
+      resolvedIslands[name] = config;
+    } else {
+      resolvedIslands[name] = config.Component;
+    }
+  }
   const makeRenderer =
     (renderFn: typeof renderToString | typeof renderToStaticMarkup) =>
     (IslandComponent: any) =>
@@ -43,28 +67,20 @@ export function exposeSSR({
       );
     };
 
-  // Extract component from islands map config
-  const extractComponent = (config: any) => {
-    if (typeof config === "function") {
-      return config;
-    }
-    return config.Component;
-  };
-
-  // Create renderers for both strategies
+  // Create renderers for both strategies using pre-resolved components
   // - renderToString: For hydrate_root (includes React markers for hydration)
   // - renderToStaticMarkup: For overwrite (clean HTML, smaller size)
   const hydrateRenderers = Object.fromEntries(
-    Object.entries(islands).map(([key, config]) => [
+    Object.entries(resolvedIslands).map(([key, Component]) => [
       key,
-      makeRenderer(renderToString)(extractComponent(config)),
+      makeRenderer(renderToString)(Component),
     ])
   );
 
   const overwriteRenderers = Object.fromEntries(
-    Object.entries(islands).map(([key, config]) => [
+    Object.entries(resolvedIslands).map(([key, Component]) => [
       key,
-      makeRenderer(renderToStaticMarkup)(extractComponent(config)),
+      makeRenderer(renderToStaticMarkup)(Component),
     ])
   );
 

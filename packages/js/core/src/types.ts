@@ -4,9 +4,14 @@ import { ComponentType } from "react";
 // Core Types
 // ============================================================================
 
-export type IslandsMap = Record<string, IslandComponent | IslandConfig>;
-
 export type IslandComponent = ComponentType<any>;
+
+export type LazyIslandFactory = () => Promise<{ default: IslandComponent }>;
+
+export type IslandsMap = Record<
+  string,
+  IslandComponent | IslandConfig | LazyIslandFactory
+>;
 
 export type ContextProviderComponent = ComponentType<{
   children: React.ReactNode;
