@@ -1,5 +1,7 @@
 import Config
 
+config :logger, level: :warning
+
 # Configure SSR renderer for test (Deno-based)
 config :live_react_islands,
   ssr_renderer: LiveReactIslands.SSR.DenoRenderer
