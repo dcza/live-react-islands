@@ -274,7 +274,9 @@ const MessageList = ({ messages: messagesHandle }) => {
 
 ### Forms with Server Validation
 
-Build forms with React UI and Elixir/Ecto validation. The `useForm` hook implements a "Validation Lock" pattern: users cannot submit until the server confirms the form is valid.
+Build forms with React UI and Elixir/Ecto validation. Input is collected client side with zero typing latency and send to Elixir for validation. Errors from the changeset get pushed back to React.
+
+The `useForm` hook implements a "Validation Lock" pattern: Updates are versioned and `isValid` will only be true until the server confirms the current form state is valid.
 
 **Elixir component:**
 
@@ -320,7 +322,6 @@ const ContactForm = ({ form, pushEvent }) => {
     isTouched,
     handleSubmit,
     isValid,
-    isSyncing,
   } = useForm(form, pushEvent);
 
   return (
@@ -336,7 +337,7 @@ const ContactForm = ({ form, pushEvent }) => {
       )}
 
       <button type="submit" disabled={!isValid}>
-        {isSyncing ? "Validating..." : "Submit"}
+        Submit
       </button>
     </form>
   );
@@ -362,7 +363,7 @@ const ContactForm = ({ form, pushEvent }) => {
 
 ### Shared Context
 
-Islands using `:none` or `:overwrite` SSR strategies render into a shared React root via portals. This enables powerful patterns like drag-and-drop between islands, shared state managers, or animation libraries that need to coordinate across components.
+Islands using `:none` (default) or `:overwrite` SSR strategies render into a shared React root via portals. This enables powerful patterns like drag-and-drop between islands, shared state managers, or animation libraries that need to coordinate across components.
 
 **Wrap all islands in a shared context:**
 
