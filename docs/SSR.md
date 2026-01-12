@@ -11,8 +11,10 @@ Create an SSR entry file that exposes your islands for server-side rendering. Th
 import { exposeSSR } from "@live-react-islands/core/ssr";
 import islands from "./islands";
 
-exposeSSR({ islands });
+await exposeSSR({ islands });
 ```
+
+> **Important:** You need to await exposeSSR. Unlike client-side islands which can be lazy-loaded, SSR requires a single JS bundle to resolve components.
 
 > **Important:** SSR code runs in a non-browser environment (Deno, Node). Avoid browser-only APIs (`window`, `document`, `localStorage`) in code that executes during render. Use `useEffect` for browser-only logic. See [React SSR guidelines](https://react.dev/reference/react-dom/server) for details.
 
@@ -27,11 +29,11 @@ use LiveReactIslands.Component,
   ssr_strategy: :hydrate_root  # or :overwrite or :none (default)
 ```
 
-| Strategy        | Shared Root | Best For                                                                 |
-| --------------- | ----------- | ------------------------------------------------------------------------ |
-| `:none`         | Yes         | Interactive components where initial render doesn't matter               |
-| `:overwrite`    | Yes         | Most islands, especially when you need cross-island context (e.g., DnD)  |
-| `:hydrate_root` | No          | Large islands where you want to avoid the overwrite flash                |
+| Strategy        | Shared Root | Best For                                                                |
+| --------------- | ----------- | ----------------------------------------------------------------------- |
+| `:none`         | Yes         | Interactive components where initial render doesn't matter              |
+| `:overwrite`    | Yes         | Most islands, especially when you need cross-island context (e.g., DnD) |
+| `:hydrate_root` | No          | Large islands where you want to avoid the overwrite flash               |
 
 **How it works:**
 

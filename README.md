@@ -63,10 +63,10 @@ export default Counter;
 
 ```jsx
 // src/islands/index.js
-import Counter from "./Counter";
-
-export default { Counter };
+export default { Counter: () => import("./Counter") };
 ```
+
+Islands can be lazy loaded to only load the JS used on the page.
 
 ```jsx
 // src/main.jsx
