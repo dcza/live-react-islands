@@ -17,6 +17,19 @@ Phoenix LiveView is excellent for server-driven UIs, but sometimes you need the 
 - Share global state across multiple islands
 - Optionally server-side render for faster loads, SEO and no flicker
 
+## Comparison
+
+| Feature                | LiveView Only                              | LiveView + Alpine    | Live React Islands (this) | Pure SPA (Next.js/Vite) |
+| :--------------------- | :----------------------------------------- | :------------------- | :------------------------ | :---------------------- |
+| **UI Ecosystem**       | Limited (HEEX/Custom)                      | Small (Alpine kits)  | **Infinite (NPM/React)**  | **Infinite (NPM)**      |
+| **Interactivity**      | Server-Roundtrip (JS hooks for edge cases) | Simple Client-side   | **High-Fidelity / Fluid** | High-Fidelity / Fluid   |
+| **State Management**   | Single (Server)                            | Fragmented           | **Single (Server-Led)**   | Dual (API + Client)     |
+| **Initial Load / SEO** | Instant                                    | Instant              | **Instant (SSR-enabled)** | Slow / Complex SSR      |
+| **JS Bundle Size**     | ~0kb (Core only)                           | Small (+15kb)        | **Medium (React)**        | Large                   |
+| **Developer Speed**    | Very High                                  | High (until complex) | **High (Asset Reuse)**    | Low (API Plumbing)      |
+| **Component Logic**    | Elixir Only                                | Mixed (Strings)      | **JSX (Encapsulated)**    | JSX                     |
+| **Complexity Ceiling** | Struggles with app-like complexity         | Hits wall on "State" | **High**                  | Very High               |
+
 ## Installation
 
 ### Elixir
@@ -186,7 +199,7 @@ end
 
 ### Global State
 
-Share state across multiple islands. When a global changes, all islands that use it are updated automatically.
+Share state across multiple islands. When a global changes, all islands that use it automatically rerender.
 
 **Set up in your LiveView:**
 
