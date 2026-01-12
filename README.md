@@ -6,13 +6,16 @@ Embed interactive React components in Phoenix LiveView with seamless bidirection
 
 ## Why Live React Islands?
 
+**The best of both worlds!** ✨
+
 Phoenix LiveView is excellent for server-driven UIs, but sometimes you need the rich interactivity of React for specific components. Live React Islands lets you:
 
 - Use React components as "islands" within your LiveView templates
 - Maintain server-side state in Elixir while rendering in React
-- Send events from React to Elixir and push updates back
+- Send events from React to Elixir and push props back
+- Use forms and streams in React with dedicated hooks
 - Share global state across multiple islands
-- Optionally server-side render for faster initial page loads
+- Optionally server-side render for faster loads, SEO and no flicker
 
 ## Installation
 
