@@ -137,16 +137,14 @@ use LiveReactIslands.Component,
   props: %{count: 0, title: "Default Title"}
 ```
 
-**Passing props from templates:**
+**Elixir components can override `init/2` for dynamic initialization:**
 
-```heex
-<.live_component module={CounterIsland} id="counter-1" title="Custom Title" />
-```
-
-**Initial props** (set once, then component owns the value):
-
-```heex
-<.live_component module={CounterIsland} id="counter-1" init_count={5} />
+```elixir
+def init(assigns, socket) do
+  # Called once on mount, before SSR and first render
+  socket
+  |> update_prop(:computed, compute_value(assigns))
+end
 ```
 
 **Updating props from Elixir:**
@@ -157,14 +155,16 @@ def handle_event("increment", _, socket) do
 end
 ```
 
-**Elixir components can override `init/2` for dynamic initialization:**
+**Passing props from templates:**
 
-```elixir
-def init(assigns, socket) do
-  # Called once on mount, before first render
-  socket
-  |> update_prop(:computed, compute_value(assigns))
-end
+```heex
+<.live_component module={CounterIsland} id="counter-1" title="Custom Title" />
+```
+
+Once a prop is set from outside the component any `update_prop` call on it will raise an error to prevent a nasty set of bugs. To just initialize the component use `init_[prop]` to set the value once and then the component takes over.
+
+```heex
+<.live_component module={CounterIsland} id="counter-1" init_count={5} />
 ```
 
 ### Events
