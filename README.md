@@ -19,6 +19,8 @@ Phoenix LiveView is excellent for server-driven UIs, but sometimes you need the 
 
 ## Comparison
 
+Choose Live React Islands when you need rich, interactive React components without giving up LiveView’s server-driven simplicity.
+
 | Feature                | LiveView Only                              | LiveView + Alpine    | Live React Islands (this) | Pure SPA (Next.js/Vite) |
 | :--------------------- | :----------------------------------------- | :------------------- | :------------------------ | :---------------------- |
 | **UI Ecosystem**       | Limited (HEEX/Custom)                      | Small (Alpine kits)  | **Infinite (NPM/React)**  | **Infinite (NPM)**      |
@@ -29,6 +31,12 @@ Phoenix LiveView is excellent for server-driven UIs, but sometimes you need the 
 | **Developer Speed**    | Very High                                  | High (until complex) | **High (Asset Reuse)**    | Low (API Plumbing)      |
 | **Component Logic**    | Elixir Only                                | Mixed (Strings)      | **JSX (Encapsulated)**    | JSX                     |
 | **Complexity Ceiling** | Struggles with app-like complexity         | Hits wall on "State" | **High**                  | Very High               |
+
+## When NOT to Use Live React Islands
+
+- If your UI is mostly static or CRUD-heavy, plain LiveView is simpler and faster.
+- If you only need light client-side behavior (toggles, dropdowns), LiveView + Alpine may be sufficient.
+- If your application requires full offline support or heavy client-side state, a traditional SPA may be a better fit.
 
 ## Installation
 
