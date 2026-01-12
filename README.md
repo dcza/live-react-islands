@@ -1,463 +1,428 @@
-# LiveReactIslands
+# Live React Islands
 
-Work in Progress - under active development, not intended for public use.
-
-React Islands for Phoenix LiveView - Embed React components in LiveView with bidirectional communication, server-side rendering, and global state management.
-
-## Demo
+Embed interactive React components in Phoenix LiveView with seamless bidirectional communication and server-side rendering.
 
 ![Demo](docs/demo01.gif)
 
-## Features
+## Why Live React Islands?
 
-- Embed React components directly in Phoenix LiveView
-- Bidirectional communication - props flow from LiveView to React, events flow from React to LiveView
-- Optional server-side rendering with caching
-- Global state management across islands
-- Prop ownership tracking for internal vs external updates
-- Shared React root using portals for efficient resource usage
-- TypeScript support
+Phoenix LiveView is excellent for server-driven UIs, but sometimes you need the rich interactivity of React for specific components. Live React Islands lets you:
 
-## Packages
+- Use React components as "islands" within your LiveView templates
+- Maintain server-side state in Elixir while rendering in React
+- Send events from React to Elixir and push updates back
+- Share global state across multiple islands
+- Optionally server-side render for faster initial page loads
 
-Monorepo packages:
+## Installation
 
-- `live_react_islands` - Phoenix LiveView integration (Elixir)
-- `@live-react-islands/core` - React hooks and SSR support (JavaScript/TypeScript)
-- `live_react_islands_ssr_vite` - Dev mode SSR backend using Vite (Elixir)
-- `live_react_islands_ssr_deno` - Production SSR backend using Deno (Elixir)
-- `examples/vite-example` - Full example detailing use with Vite + SSR
+### Elixir
 
-## Quick Start
-
-### Installation
-
-Elixir (mix.exs):
+Add to your `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:live_react_islands, "~> 0.1.0"}
+    {:live_react_islands, "~> 0.1.0"},
+    # For development SSR (optional):
+    {:live_react_islands_ssr_vite, "~> 0.1.0", only: :dev},
+    # For production SSR (optional):
+    {:live_react_islands_ssr_deno, "~> 0.1.0", only: :prod}
   ]
 end
 ```
 
-JavaScript:
+### JavaScript
 
 ```bash
-npm install @live-react-islands/core react react-dom
+npm install @live-react-islands/core
+# For development SSR (optional):
+npm install --save-dev @live-react-islands/vite-plugin-ssr
 ```
 
-### Configuration
+## Quick Start
 
-SSR configuration is optional. See the [SSR section](#server-side-rendering-ssr) for details.
+### 1. Create a React Component
 
-### Basic Usage
+```jsx
+// src/islands/Counter.jsx
+const Counter = ({ count, title, pushEvent }) => {
+  return (
+    <div>
+      <h2>{title}</h2>
+      <p>Count: {count}</p>
+      <button onClick={() => pushEvent("increment", {})}>+1</button>
+    </div>
+  );
+};
 
-1. Create a React Island Component (Elixir):
+export default Counter;
+```
+
+### 2. Set Up the LiveView Hooks
+
+```jsx
+// src/islands/index.js
+import Counter from "./Counter";
+
+export default { Counter };
+```
+
+```jsx
+// src/main.jsx
+import { createHooks } from "@live-react-islands/core";
+import islands from "./islands";
+
+const islandHooks = createHooks({ islands });
+
+// Add to your LiveSocket
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: { ...islandHooks },
+});
+```
+
+### 3. Create an Elixir Component
 
 ```elixir
 defmodule MyAppWeb.Components.CounterIsland do
   use LiveReactIslands.Component,
     component: "Counter",
-    props: %{count: 0},
-    ssr_strategy: :none
+    props: %{count: 0, title: "My Counter"}
 
   def handle_event("increment", _params, socket) do
     new_count = socket.assigns.count + 1
-    {:noreply, socket |> update_prop(:count, new_count)}
+    {:noreply, update_prop(socket, :count, new_count)}
   end
 end
 ```
 
-2. Create the React Component:
-
-```jsx
-// assets/js/components/Counter.jsx
-export default function Counter({ count, pushEvent }) {
-  return (
-    <div>
-      <h2>Count: {count}</h2>
-      <button onClick={() => pushEvent("increment", {})}>Increment</button>
-    </div>
-  );
-}
-```
-
-3. Use it in your LiveView:
+### 4. Use in Your LiveView
 
 ```elixir
-defmodule MyAppWeb.PageLive do
+defmodule MyAppWeb.CounterLive do
   use MyAppWeb, :live_view
+  use LiveReactIslands.LiveView
 
   def render(assigns) do
     ~H"""
-    <.live_component module={MyAppWeb.Components.CounterIsland} id="counter" />
+    <.live_component module={MyAppWeb.Components.CounterIsland} id="counter-1" />
     """
   end
 end
 ```
 
-## Key Concepts
+## How It Works
 
-### Prop Ownership
+**React components receive these props automatically:**
 
-LiveReactIslands tracks which component owns each prop:
+| Prop                 | Description                       |
+| -------------------- | --------------------------------- |
+| `id`                 | The island's unique identifier    |
+| `pushEvent`          | Function to send events to Elixir |
+| All defined props    | Current values from Elixir        |
+| All consumed globals | Current global state values       |
 
-- Internal Owned: LiveComponent manages the prop (LiveComponent → React)
-- External Owned: LiveView manages the prop, passed down through LiveComponent (LiveView → LiveComponent → React)
+## Features
 
-### Event Communication
+### Props
 
-React components receive `pushEvent` as a prop to send events to the LiveComponent:
+Define props with default values. Props can be set from the template or updated from event handlers:
+
+```elixir
+use LiveReactIslands.Component,
+  component: "Counter",
+  props: %{count: 0, title: "Default Title"}
+```
+
+**Passing props from templates:**
+
+```heex
+<.live_component module={CounterIsland} id="counter-1" title="Custom Title" />
+```
+
+**Initial props** (set once, then component owns the value):
+
+```heex
+<.live_component module={CounterIsland} id="counter-1" init_count={5} />
+```
+
+**Updating props from Elixir:**
+
+```elixir
+def handle_event("increment", _, socket) do
+  {:noreply, update_prop(socket, :count, socket.assigns.count + 1)}
+end
+```
+
+**Elixir components can override `init/2` for dynamic initialization:**
+
+```elixir
+def init(assigns, socket) do
+  # Called once on mount, before first render
+  socket
+  |> update_prop(:computed, compute_value(assigns))
+end
+```
+
+### Events
+
+Send events from React to Elixir using `pushEvent`:
 
 ```jsx
-function MyComponent({ pushEvent }) {
-  const handleClick = () => {
-    pushEvent("my_event", { data: "value" });
-  };
-  // ...
-}
+// React
+<button onClick={() => pushEvent("save", { data: formData })}>Save</button>
+```
+
+```elixir
+# Elixir
+def handle_event("save", %{"data" => data}, socket) do
+  # Handle the event
+  {:noreply, socket}
+end
 ```
 
 ### Global State
 
-Share state across islands by declaring globals in your LiveView and requesting them in your island components.
+Share state across multiple islands. When a global changes, all islands that use it are updated automatically.
 
-LiveView:
+**Set up in your LiveView:**
 
 ```elixir
-defmodule MyLiveView do
+defmodule MyAppWeb.DashboardLive do
   use MyAppWeb, :live_view
-  use LiveReactIslands.LiveView, expose_globals: [:theme, :user]
+  use LiveReactIslands.LiveView, expose_globals: [:user, :theme]
 
-  def mount(_params, _session, socket) do
-    socket = socket
-    |> assign(:theme, "dark")
-    |> assign(:user, %{name: "Alice"})
-
-    {:ok, socket}
+  def mount(_params, session, socket) do
+    {:ok, assign(socket, user: get_user(session), theme: "light")}
   end
 end
 ```
 
-Island Component:
+**Consume in your island:**
 
 ```elixir
-defmodule MyAppWeb.Components.ThemedCounter do
-  use LiveReactIslands.Component,
-    component: "ThemedCounter",
-    props: %{count: 0},
-    globals: [:theme, :user?]  # user is optional
-end
+use LiveReactIslands.Component,
+  component: "Header",
+  props: %{},
+  globals: [:user, :theme]
 ```
 
-Add `?` suffix to make a global optional. This allows the island to be used in LiveViews that don't expose that global:
+**Optional globals** (won't error if not set):
+
+```elixir
+globals: [:user?]  # The ? suffix makes it optional
+```
+
+The globals are passed as props to your React component:
 
 ```jsx
-function ThemedCounter({ theme, user, count, pushEvent }) {
-  return (
-    <div className={theme}>
-      {user && <p>Welcome, {user.name}!</p>}
-      <p>Count: {count}</p>
-    </div>
-  );
-}
+const Header = ({ user, theme }) => (
+  <header className={theme}>Welcome, {user.name}</header>
+);
 ```
-
-When globals change in LiveView, all islands that requested those globals automatically re-render.
 
 ### Streams
 
-Streams are special props that provide efficient real-time data updates without standard LiveView diffing. Like Phoenix streams items are not kept in memory on the server side. Use streams for append-heavy data like chat messages, notifications, or activity feeds.
+Stream data to React components for real-time updates like feeds, chat, or infinite scrolling:
 
-Elixir - Define a stream prop:
+**Define a stream prop:**
 
 ```elixir
-defmodule MyAppWeb.Components.ChatIsland do
-  use LiveReactIslands.Component,
-    component: "Chat",
-    props: %{
-      title: "Chat Room",
-      messages: {:stream, default: []}
-    }
-
-  def handle_event("send_message", %{"text" => text}, socket) do
-    message = %{id: System.unique_integer(), text: text, user: "Alice"}
-    {:noreply, stream_insert(socket, :messages, message)}
-  end
-
-  def handle_event("delete_message", %{"id" => id}, socket) do
-    {:noreply, stream_delete(socket, :messages, id)}
-  end
-
-  def handle_event("clear_all", _params, socket) do
-    {:noreply, stream_reset(socket, :messages)}
-  end
-end
+use LiveReactIslands.Component,
+  component: "MessageList",
+  props: %{
+    messages: {:stream, default: []}
+  }
 ```
 
-Stream helper functions:
+**Push stream events from Elixir:**
 
-- `stream_insert(socket, stream_name, entry)` - Add entry (must have `id` field)
-- `stream_update(socket, stream_name, entry)` - Update entry by id
-- `stream_delete(socket, stream_name, id)` - Remove entry by id
-- `stream_reset(socket, stream_name)` - Clear all entries
+```elixir
+# Insert new item (prepends by default)
+socket |> stream_insert(:messages, %{id: 1, text: "Hello"})
 
-React - Consume with `useStream`:
+# Update existing item
+socket |> stream_update(:messages, %{id: 1, text: "Hello, edited"})
+
+# Delete an item
+socket |> stream_delete(:messages, 1)
+
+# Reset the entire stream
+socket |> stream_reset(:messages)
+```
+
+**Consume in React:**
 
 ```jsx
 import { useStream } from "@live-react-islands/core";
 
-function Chat({ title, messages, pushEvent }) {
-  const items = useStream(messages, { limit: 100 });
+const MessageList = ({ messages: messagesHandle }) => {
+  const messages = useStream(messagesHandle, { limit: 100 });
 
   return (
-    <div>
-      <h2>{title}</h2>
-      {items.map((msg) => (
-        <div key={msg.id}>
-          <span>
-            {msg.user}: {msg.text}
-          </span>
-          <button onClick={() => pushEvent("delete_message", { id: msg.id })}>
-            ×
-          </button>
-        </div>
+    <ul>
+      {messages.map((msg) => (
+        <li key={msg.id}>{msg.text}</li>
       ))}
-    </div>
+    </ul>
   );
-}
-```
-
-Options for `useStream`:
-
-- `limit` - Maximum items to keep (FIFO eviction)
-- `capper` - Custom eviction function for complex logic (e.g., keep top scores)
-
-```jsx
-// Keep only top 10 scores
-const scores = useStream(leaderboard, {
-  capper: (items) => items.sort((a, b) => b.score - a.score).slice(0, 10),
-});
-```
-
-Create an `islands/index.js` file to export all islands, ensuring client and server use the same island map:
-
-```javascript
-// islands/index.js
-import Counter from "./Counter";
-import TodoList from "./TodoList";
-
-export default { Counter, TodoList };
-```
-
-To sync globals to a Zustand/Redux store:
-
-```jsx
-function MyIsland({ theme, user, count }) {
-  const store = useStore();
-
-  // Sync globals to your store if needed
-  useEffect(() => {
-    store.setState({ theme, user });
-  }, [theme, user]);
-
-  return (
-    <div className={theme}>
-      <p>Welcome, {user.name}!</p>
-      <p>Count: {count}</p>
-    </div>
-  );
-}
-```
-
-### Server-Side Rendering (SSR)
-
-LiveReactIslands supports SSR with strategy-aware rendering. The system automatically chooses between `renderToString` or `renderToStaticMarkup` based on your strategy.
-
-1. Create an islands index file:
-
-```javascript
-// islands/index.js
-import Counter from "./Counter";
-import TodoList from "./TodoList";
-
-export default { Counter, TodoList };
-```
-
-2. Client entry point:
-
-```javascript
-// app.js
-import { createHooks } from "@live-react-islands/core";
-import islands from "./islands";
-import { Socket } from "phoenix";
-import { LiveSocket } from "phoenix_live_view";
-
-const hooks = createHooks({ islands });
-
-const liveSocket = new LiveSocket("/live", Socket, {
-  hooks: { ...hooks },
-});
-
-liveSocket.connect();
-```
-
-3. Server entry point:
-
-```javascript
-// ssr.js - works with Deno, Node, Bun, or any JS runtime
-import { exposeSSR } from "@live-react-islands/core/ssr";
-import islands from "./islands";
-
-exposeSSR({ islands });
-```
-
-To wrap all islands in a shared context provider:
-
-```javascript
-import { exposeSSR } from "@live-react-islands/core/ssr";
-import islands from "./islands";
-
-const SharedContextProvider = ({ children }) => {
-  return children;
 };
-
-exposeSSR({ islands, SharedContextProvider });
 ```
 
-Both client and server import from the same `./islands` file. The `exposeSSR` function sets up a global `SSR_MODULE` object that the Elixir renderer calls.
+### Forms with Server Validation
 
-4. Configure SSR backend:
+Build forms with React UI and Elixir/Ecto validation. The `useForm` hook implements a "Validation Lock" pattern: users cannot submit until the server confirms the form is valid.
 
-Development (Vite):
-
-```elixir
-# config/dev.exs
-config :live_react_islands,
-  ssr_renderer: LiveReactIslands.SSR.ViteRenderer
-```
-
-Production (Deno):
+**Elixir component:**
 
 ```elixir
-# config/prod.exs
-config :live_react_islands,
-  ssr_renderer: LiveReactIslands.SSR.DenoRenderer
-
-config :live_react_islands_ssr_deno,
-  main_module_path: "priv/static/assets/ssr.js"
-```
-
-5. Enable SSR in your LiveComponent:
-
-```elixir
-defmodule MyAppWeb.Components.CounterIsland do
+defmodule MyAppWeb.Components.ContactFormIsland do
   use LiveReactIslands.Component,
-    component: "Counter",
-    props: %{count: 0, title: "My Counter"},
-    ssr_strategy: :hydrate_root  # or :overwrite, :none
+    component: "ContactForm",
+    props: %{form: %{}}
+
+  alias MyApp.Contact
+
+  def init(_assigns, socket) do
+    changeset = Contact.changeset(%Contact{}, %{})
+    socket |> init_form(:form, changeset)
+  end
+
+  def handle_form(:validate, :form, attrs, socket) do
+    changeset = Contact.changeset(%Contact{}, attrs)
+    {:noreply, update_form(socket, :form, changeset)}
+  end
+
+  def handle_form(:submit, :form, attrs, socket) do
+    case Contact.create(attrs) do
+      {:ok, _contact} ->
+        {:noreply, init_form(socket, :form, Contact.changeset(%Contact{}, %{}))}
+      {:error, changeset} ->
+        {:noreply, update_form(socket, :form, changeset)}
+    end
+  end
 end
 ```
 
-### SSR Strategies
+**React component:**
 
-#### `:none` (Default)
+```jsx
+import { useForm } from "@live-react-islands/core";
 
-Client: React mounts on empty container
-Server: No SSR
+const ContactForm = ({ form, pushEvent }) => {
+  const {
+    getFieldProps,
+    getError,
+    isRequired,
+    isTouched,
+    handleSubmit,
+    isValid,
+    isSyncing,
+  } = useForm(form, pushEvent);
 
-Drawbacks:
+  return (
+    <form onSubmit={handleSubmit}>
+      <input {...getFieldProps("name")} />
+      {isTouched("name") && getError("name") && (
+        <span className="error">{getError("name")}</span>
+      )}
 
-- No SEO content
-- Visual flicker - page renders without island content, then pops in when JS loads
+      <input {...getFieldProps("email")} type="email" />
+      {isTouched("email") && getError("email") && (
+        <span className="error">{getError("email")}</span>
+      )}
 
-Use case: Purely interactive components where initial render doesn't matter
-
-#### `:overwrite` (Recommended)
-
-Client: React replaces server HTML with `createRoot` in a shared root
-Server: Uses `renderToStaticMarkup`
-
-Architecture: All islands share a single React root using portals
-
-Benefits:
-
-- SEO-friendly content in first render
-- No visual flicker
-- Better performance through shared React root
-- Islands can share context (enables drag-and-drop between islands, shared providers)
-- No strict DOM matching required
-
-Use case: Most islands, especially when cross-island features or shared context are needed
-
-#### `:hydrate_root`
-
-Client: React hydrates existing DOM with `hydrateRoot` in individual roots
-Server: Uses `renderToString`
-
-Architecture: Each island gets its own independent React root
-
-Benefits:
-
-- Prevents re-render of large islands (hydration reuses server HTML)
-- Fastest perceived interactivity for complex components
-
-Tradeoffs:
-
-- Islands cannot share context (each has isolated React root)
-- Requires strict DOM matching between server and client
-
-Use case: Large, complex islands where avoiding the initial re-render is critical
-
-### Runtime Flexibility
-
-The SSR system is runtime-agnostic. The same JavaScript code works with:
-
-- Vite Dev Server (development with HMR)
-- Deno
-- Node.js
-- Bun
-
-Configure the appropriate renderer in your Elixir config.
-
-## Development
-
-### Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/live_react_islands/live-react-islands.git
-cd live-react-islands
-
-# Install JavaScript dependencies
-yarn install
-
-# Build packages
-yarn build
+      <button type="submit" disabled={!isValid}>
+        {isSyncing ? "Validating..." : "Submit"}
+      </button>
+    </form>
+  );
+};
 ```
+
+**`useForm` returns:**
+
+| Property                | Description                                           |
+| ----------------------- | ----------------------------------------------------- |
+| `values`                | Current form values                                   |
+| `errors`                | Validation errors by field                            |
+| `touched`               | Fields the user has interacted with                   |
+| `getFieldProps(name)`   | Props to spread on inputs (`value`, `onChange`, etc.) |
+| `getError(name)`        | First error message for a field                       |
+| `isRequired(name)`      | Whether a field is required                           |
+| `isTouched(name)`       | Whether user has modified this field                  |
+| `setField(name, value)` | Programmatically set a field value                    |
+| `handleSubmit`          | Form submit handler                                   |
+| `reset()`               | Reset form to server values                           |
+| `isSyncing`             | True while waiting for server validation              |
+| `isValid`               | True only when synced AND server says valid           |
+
+### Shared Context
+
+Islands using `:none` or `:overwrite` SSR strategies render into a shared React root via portals. This enables powerful patterns like drag-and-drop between islands, shared state managers, or animation libraries that need to coordinate across components.
+
+**Wrap all islands in a shared context:**
+
+```jsx
+// src/main.jsx
+import { createHooks } from "@live-react-islands/core";
+import { DndProvider } from "react-beautiful-dnd";
+import islands from "./islands";
+
+const SharedContextProvider = ({ children }) => (
+  <DndProvider backend={HTML5Backend}>{children}</DndProvider>
+);
+
+const islandHooks = createHooks({
+  islands,
+  SharedContextProvider,
+});
+```
+
+Now all your islands can participate in drag-and-drop with each other, even though they're scattered across your LiveView template.
+
+> **Note:** Islands using `:hydrate_root` SSR strategy have their own isolated React root and do not participate in the shared context. Use `:overwrite` or `:none` if you need context sharing between islands.
+
+### Server-Side Rendering (SSR)
+
+SSR improves initial page load performance by rendering React components on the server.
+
+```elixir
+use LiveReactIslands.Component,
+  component: "Counter",
+  props: %{count: 0},
+  ssr_strategy: :overwrite  # or :hydrate_root or :none (default)
+```
+
+| Strategy        | Shared Root | Best For                                                                |
+| --------------- | ----------- | ----------------------------------------------------------------------- |
+| `:none`         | Yes         | Interactive components where initial render doesn't matter              |
+| `:overwrite`    | Yes         | Most islands, especially when you need cross-island context (e.g., DnD) |
+| `:hydrate_root` | No          | Large islands where you want to avoid the overwrite flash               |
+
+See the **[SSR Guide](docs/SSR.md)** for complete setup instructions, caching strategies, and custom renderer implementation.
+
+## Requirements
+
+- Elixir >= 1.14
+- Phoenix LiveView >= 1.0
+- React 18 or 19
+- Any JavaScript bundler (built-in SSR plugin for Vite)
 
 ### Running Examples
 
 ```bash
-cd examples/with-esbuild  # or examples/with-vite
+cd examples/vite-example
 mix deps.get
 yarn install
-yarn watch  # or yarn dev for Vite
+yarn dev
 mix phx.server  # in another terminal
 ```
 
 ## Contributing
 
-See [Contributing Guide](https://github.com/dcza/live-react-islands/blob/main/CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/dcza/live-react-islands/blob/main/CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
 MIT License - see [LICENSE](https://github.com/dcza/live-react-islands/blob/main/LICENSE) for details.
-
-## Credits
-
-Created by David Czaplinski
-
-Inspired by the islands architecture pattern and existing Phoenix-React integration libraries.

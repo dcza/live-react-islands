@@ -6,29 +6,29 @@ Thank you for your interest in contributing to LiveReactIslands! This document p
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/live_react_islands/live-react-islands.git
+   git clone https://github.com/dcza/live-react-islands.git
    cd live-react-islands
    ```
 
 2. **Install dependencies:**
    ```bash
-   yarn install
+   npm install
    ```
 
 3. **Build packages:**
    ```bash
-   yarn build
+   npm run build
    ```
 
 4. **Run tests:**
    ```bash
+   # JavaScript tests
+   cd packages/js/core
+   npm test
+
    # Elixir tests
    cd packages/elixir/live_react_islands
    mix test
-
-   # JavaScript tests
-   cd packages/react
-   yarn test
    ```
 
 ## Project Structure
@@ -36,12 +36,16 @@ Thank you for your interest in contributing to LiveReactIslands! This document p
 ```
 live-react-islands/
 ├── packages/
-│   ├── elixir/
-│   │   └── live_react_islands/  # Elixir package
-│   └── react/                   # JavaScript/React package
+│   ├── js/
+│   │   ├── core/                      # @live-react-islands/core
+│   │   └── vite-plugin-ssr/           # @live-react-islands/vite-plugin-ssr
+│   └── elixir/
+│       ├── live_react_islands/        # Core Elixir package
+│       ├── live_react_islands_ssr_vite/   # Vite SSR renderer (dev)
+│       └── live_react_islands_ssr_deno/   # Deno SSR renderer (prod)
 ├── examples/
-│   └── basic-demo/              # Example Phoenix app
-└── docs/                        # Documentation
+│   └── vite-example/                  # Example Phoenix app with Vite
+└── docs/                              # Documentation
 ```
 
 ## Making Changes
@@ -58,7 +62,7 @@ live-react-islands/
 
 3. **Test your changes:**
    ```bash
-   yarn test
+   cd packages/js/core && npm test
    cd packages/elixir/live_react_islands && mix test
    ```
 
