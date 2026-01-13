@@ -69,7 +69,7 @@ defmodule ViteExampleWeb do
       # Helpers to load assets from Vite dev server in dev, built files in prod
       def vite_client_script do
         if Application.get_env(:vite_example, :dev_routes, false) do
-          "http://localhost:5173/@vite/client"
+          "http:/127.0.0.1:5173/@vite/client"
         else
           nil
         end
@@ -77,7 +77,7 @@ defmodule ViteExampleWeb do
 
       def vite_js_entry do
         if Application.get_env(:vite_example, :dev_routes, false) do
-          "http://localhost:5173/src/main.jsx"
+          "http://127.0.0.1:5173/src/main.jsx"
         else
           ~p"/assets/main.js"
         end
@@ -87,7 +87,7 @@ defmodule ViteExampleWeb do
         if Application.get_env(:vite_example, :dev_routes, false) do
           # Load CSS directly from Vite dev server to avoid FOUC
           # ?direct param tells Vite to return raw CSS instead of JS module
-          "http://localhost:5173/src/index.css?direct"
+          "http://127.0.0.1:5173/src/index.css?direct"
         else
           ~p"/assets/main.css"
         end
