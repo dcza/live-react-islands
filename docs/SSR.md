@@ -167,3 +167,59 @@ globalThis.SSR_MODULE = {
 ```
 
 The built-in `DenoRenderer` uses [DenoRider](https://github.com/akoutmos/deno_rider) to spawn a Deno process that loads your SSR bundle and calls `SSR_MODULE.renderSSRIsland()` for each render request.
+
+## Static Templates
+
+React templating with zero JS delivered to the client.
+
+Use `SSR.render_static_template/2` to render React components server-side and stitch HEEx slot content into the result. The output is pure HTML—no React runtime, no hydration, no JavaScript.
+
+```elixir
+defmodule MyAppWeb.CoreComponents do
+  use Phoenix.Component
+  alias LiveReactIslands.SSR
+
+  attr :variant, :string, default: "default"
+  attr :ttl, :any, default: nil
+  slot :title, required: true
+  slot :actions
+  slot :inner_block
+
+  def card(assigns) do
+    # Default TTL can be overridden via assigns
+    SSR.render_static_template(assigns, "Card", ttl: :infinity)
+  end
+end
+```
+
+```heex
+<%!-- Uses default infinite TTL --%>
+<.card variant="featured">
+  <:title>My Card Title</:title>
+  <:actions>
+    <button phx-click="save">Save</button>
+  </:actions>
+  Card content goes here.
+</.card>
+
+<%!-- Override TTL for this instance --%>
+<.card variant="sale" ttl={:timer.hours(1)}>
+  <:title>Flash Sale</:title>
+</.card>
+```
+
+The React component receives slot markers (`slots.title`, `slots.actions`, etc.) which get replaced with the rendered HEEx content:
+
+```jsx
+const Card = ({ variant, slots }) => (
+  <div className={`card card-${variant}`}>
+    <h2>{slots.title}</h2>
+    <div>{slots.inner_block}</div>
+    {slots.actions && <div className="actions">{slots.actions}</div>}
+  </div>
+);
+```
+
+**Caching:** Static templates use infinite TTL by default since slot markers never change. Override with `:ttl` option (milliseconds or `:infinity`).
+
+**When to use:** React components can express complex conditional styling, animations, and layout logic that would be verbose or difficult to replicate in HEEx. Static templates let you leverage existing React design systems and component libraries for their visual capabilities while keeping content and interactivity in LiveView.

@@ -191,7 +191,8 @@ defmodule LiveReactIslands.SSR.ETSCache do
   @impl true
   def handle_info(:cleanup_expired, state) do
     now = System.monotonic_time(:millisecond)
-    match_spec = [{{:"$1", {:_, :"$2"}}, [{:<, :"$2", now}], [true]}]
+    # Only match entries with numeric expiration (skip :infinity entries)
+    match_spec = [{{:"$1", {:"$2", :"$3"}}, [{:andalso, {:is_integer, :"$3"}, {:<, :"$3", now}}], [true]}]
 
     deleted = :ets.select_delete(:live_react_islands_ssr_cache, match_spec)
 
@@ -232,7 +233,10 @@ defmodule LiveReactIslands.SSR.ETSCache do
     now = System.monotonic_time(:millisecond)
 
     case :ets.lookup(:live_react_islands_ssr_cache, cache_key) do
-      [{^cache_key, {html, expires_at}}] when expires_at > now ->
+      [{^cache_key, {html, :infinity}}] ->
+        {:ok, html}
+
+      [{^cache_key, {html, expires_at}}] when is_integer(expires_at) and expires_at > now ->
         {:ok, html}
 
       _ ->
@@ -267,16 +271,21 @@ defmodule LiveReactIslands.SSR.ETSCache do
        ) do
     case renderer_module.render_component(component_name, id, props, globals, ssr_strategy) do
       {:ok, html} ->
-        ttl =
+        expires_at =
           case Keyword.get(opts, :ttl) do
+            :infinity ->
+              :infinity
+
             ttl when is_integer(ttl) ->
-              ttl
+              System.monotonic_time(:millisecond) + ttl
 
             nil ->
-              Application.get_env(:live_react_islands, :cache_default_ttl, :timer.minutes(5))
+              default_ttl =
+                Application.get_env(:live_react_islands, :cache_default_ttl, :timer.minutes(5))
+
+              System.monotonic_time(:millisecond) + default_ttl
           end
 
-        expires_at = System.monotonic_time(:millisecond) + ttl
         :ets.insert(:live_react_islands_ssr_cache, {cache_key, {html, expires_at}})
 
         {:ok, html}
