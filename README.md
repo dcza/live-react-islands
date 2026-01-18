@@ -1,8 +1,8 @@
 # Live React Islands
 
-Embed interactive React components in Phoenix LiveView with seamless bidirectional communication and server-side rendering.
+**React-powered interactive islands** inside Phoenix LiveView — full NPM ecosystem, server-led state, streams, forms + optional SSR.
 
-![Demo](docs/demo01.gif)
+![Banner](docs/repository-open-graph.png)
 
 ## Why Live React Islands?
 
@@ -21,16 +21,16 @@ Phoenix LiveView is excellent for server-driven UIs, but sometimes you need the 
 
 Choose Live React Islands when you need rich, interactive React components without giving up LiveView’s server-driven simplicity.
 
-| Feature                | LiveView Only                              | LiveView + Alpine    | Live React Islands (this) | Pure SPA (Next.js/Vite) |
-| :--------------------- | :----------------------------------------- | :------------------- | :------------------------ | :---------------------- |
-| **UI Ecosystem**       | Limited (HEEX/Custom)                      | Small (Alpine kits)  | **Infinite (NPM/React)**  | **Infinite (NPM)**      |
-| **Interactivity**      | Server-Roundtrip (JS hooks for edge cases) | Simple Client-side   | **High-Fidelity / Fluid** | High-Fidelity / Fluid   |
-| **State Management**   | Single (Server)                            | Fragmented           | **Single (Server-Led)**   | Dual (API + Client)     |
-| **Initial Load / SEO** | Instant                                    | Instant              | **Instant (SSR-enabled)** | Slow / Complex SSR      |
-| **JS Bundle Size**     | ~0kb (Core only)                           | Small (+15kb)        | **Medium (React)**        | Large                   |
-| **Developer Speed**    | Very High                                  | High (until complex) | **High (Asset Reuse)**    | Low (API Plumbing)      |
-| **Component Logic**    | Elixir Only                                | Mixed (Strings)      | **JSX (Encapsulated)**    | JSX                     |
-| **Complexity Ceiling** | Struggles with app-like complexity         | Hits wall on "State" | **High**                  | Very High               |
+| Feature                | LiveView Only                              | LiveView + Alpine    | Live React Islands (this)              | Pure SPA (Next.js/Vite) |
+| :--------------------- | :----------------------------------------- | :------------------- | :------------------------------------- | :---------------------- |
+| **UI Ecosystem**       | Limited (HEEX/Custom)                      | Small (Alpine kits)  | **Infinite (NPM/React)**               | **Infinite (NPM)**      |
+| **Interactivity**      | Server-Roundtrip (JS hooks for edge cases) | Simple Client-side   | **High-Fidelity / Fluid**              | High-Fidelity / Fluid   |
+| **State Management**   | Single (Server)                            | Fragmented           | **Single (Server-Led)**                | Dual (API + Client)     |
+| **Initial Load / SEO** | Instant                                    | Instant              | **Instant (SSR-enabled)**              | Slow / Complex SSR      |
+| **JS Bundle Size**     | ~0kb (Core only)                           | Small (+15kb)        | **Large (React: ~100–150 kB gzipped)** | Large                   |
+| **Developer Speed**    | Very High                                  | High (until complex) | **High (Asset Reuse)**                 | Low (API Plumbing)      |
+| **Component Logic**    | Elixir Only                                | Mixed (Strings)      | **JSX (Encapsulated)**                 | JSX                     |
+| **Complexity Ceiling** | Struggles with app-like complexity         | Hits wall on "State" | **High**                               | Very High               |
 
 ## When NOT to Use Live React Islands
 
@@ -425,7 +425,9 @@ use LiveReactIslands.Component,
 | `:overwrite`    | Yes         | Most islands, especially when you need cross-island context (e.g., DnD) |
 | `:hydrate_root` | No          | Large islands where you want to avoid the overwrite flash               |
 
-See the **[SSR Guide](docs/SSR.md)** for complete setup instructions, caching strategies, and custom renderer implementation.
+> ⚠️ SSR is optional. Many islands work perfectly without it. Enable SSR when initial paint, SEO, or perceived performance matter.
+
+See the **[SSR Guide](https://github.com/dcza/live-react-islands/blob/main/docs/SSR.md)** for complete setup instructions, caching strategies, and custom renderer implementation.
 
 ## Requirements
 
