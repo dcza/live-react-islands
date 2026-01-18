@@ -1,6 +1,6 @@
 # Live React Islands
 
-**React-powered interactive islands** inside Phoenix LiveView. Harness the NPM ecosystem with server-driven state, real-time streams, and high-fidelity forms + SSR.
+**React-powered interactive islands** inside Phoenix LiveView. Harness the NPM ecosystem with server-driven state, real-time streams and zero-lag forms + SSR.
 
 ![Banner](docs/repository-open-graph.png)
 
