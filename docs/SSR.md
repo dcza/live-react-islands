@@ -80,11 +80,13 @@ config :live_react_islands_ssr_deno,
 Cache SSR output for expensive components:
 
 ```elixir
-# Enable globally
+# Configure
 config :live_react_islands,
-  ssr_cache: LiveReactIslands.SSR.ETSCache
+  ssr_cache: LiveReactIslands.SSR.ETSCache,
+  cache_default_ttl: :timer.minutes(5),
+  cache_cleanup_interval: :timer.minutes(1)
 
-# Enable per component
+# Opt-in per component
 use LiveReactIslands.Component,
   component: "ExpensiveChart",
   props: %{data: []},

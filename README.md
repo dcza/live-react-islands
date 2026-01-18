@@ -1,6 +1,6 @@
 # Live React Islands
 
-**React-powered interactive islands** inside Phoenix LiveView — full NPM ecosystem, server-led state, streams, forms + optional SSR.
+**React-powered interactive islands** inside Phoenix LiveView. Harness the NPM ecosystem with server-driven state, real-time streams, and high-fidelity forms + SSR.
 
 ![Banner](docs/repository-open-graph.png)
 
@@ -245,54 +245,6 @@ const Header = ({ user, theme }) => (
 );
 ```
 
-### Streams
-
-Stream data to React components for real-time updates like feeds, chat, or infinite scrolling:
-
-**Define a stream prop:**
-
-```elixir
-use LiveReactIslands.Component,
-  component: "MessageList",
-  props: %{
-    messages: {:stream, default: []}
-  }
-```
-
-**Push stream events from Elixir:**
-
-```elixir
-# Insert new item (prepends by default)
-socket |> stream_insert(:messages, %{id: 1, text: "Hello"})
-
-# Update existing item
-socket |> stream_update(:messages, %{id: 1, text: "Hello, edited"})
-
-# Delete an item
-socket |> stream_delete(:messages, 1)
-
-# Reset the entire stream
-socket |> stream_reset(:messages)
-```
-
-**Consume in React:**
-
-```jsx
-import { useStream } from "@live-react-islands/core";
-
-const MessageList = ({ messages: messagesHandle }) => {
-  const messages = useStream(messagesHandle, { limit: 100 });
-
-  return (
-    <ul>
-      {messages.map((msg) => (
-        <li key={msg.id}>{msg.text}</li>
-      ))}
-    </ul>
-  );
-};
-```
-
 ### Forms with Server Validation
 
 Build forms with React UI and Elixir/Ecto validation. Input is collected client side with zero typing latency and send to Elixir for validation. Errors from the changeset get pushed back to React.
@@ -381,6 +333,54 @@ const ContactForm = ({ form, pushEvent }) => {
 | `reset()`               | Reset form to server values                           |
 | `isSyncing`             | True while waiting for server validation              |
 | `isValid`               | True only when synced AND server says valid           |
+
+### Streams
+
+Stream data to React components for real-time updates like feeds, chat, or infinite scrolling:
+
+**Define a stream prop:**
+
+```elixir
+use LiveReactIslands.Component,
+  component: "MessageList",
+  props: %{
+    messages: {:stream, default: []}
+  }
+```
+
+**Push stream events from Elixir:**
+
+```elixir
+# Insert new item (prepends by default)
+socket |> stream_insert(:messages, %{id: 1, text: "Hello"})
+
+# Update existing item
+socket |> stream_update(:messages, %{id: 1, text: "Hello, edited"})
+
+# Delete an item
+socket |> stream_delete(:messages, 1)
+
+# Reset the entire stream
+socket |> stream_reset(:messages)
+```
+
+**Consume in React:**
+
+```jsx
+import { useStream } from "@live-react-islands/core";
+
+const MessageList = ({ messages: messagesHandle }) => {
+  const messages = useStream(messagesHandle, { limit: 100 });
+
+  return (
+    <ul>
+      {messages.map((msg) => (
+        <li key={msg.id}>{msg.text}</li>
+      ))}
+    </ul>
+  );
+};
+```
 
 ### Shared Context
 
