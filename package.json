@@ -16,16 +16,16 @@
   ],
   "scripts": {
     "build": "yarn build:js && yarn build:elixir",
-    "build:js": "yarn workspaces foreach -pt run build",
+    "build:js": "yarn workspaces foreach -A --exclude live-react-islands run build",
     "build:elixir": "cd packages/elixir/live_react_islands && mix compile",
     "test": "yarn test:js && yarn test:elixir",
-    "test:js": "yarn workspaces foreach -pt run test",
+    "test:js": "yarn workspaces foreach -A --exclude live-react-islands run test",
     "test:elixir": "cd packages/elixir/live_react_islands && mix test",
     "clean": "yarn clean:js && yarn clean:elixir",
-    "clean:js": "yarn workspaces foreach -pt run clean",
+    "clean:js": "yarn workspaces foreach -A --exclude live-react-islands run clean",
     "clean:elixir": "cd packages/elixir/live_react_islands && mix clean",
     "format": "yarn format:js && yarn format:elixir",
-    "format:js": "yarn workspaces foreach -pt run format",
+    "format:js": "yarn workspaces foreach -A --exclude live-react-islands run format",
     "format:elixir": "cd packages/elixir/live_react_islands && mix format"
   },
   "engines": {
