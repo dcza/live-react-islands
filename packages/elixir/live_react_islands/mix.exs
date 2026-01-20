@@ -16,7 +16,15 @@ defmodule LiveReactIslands.MixProject do
       description: description(),
       docs: docs(),
       name: "LiveReactIslands",
-      source_url: @source_url
+      source_url: @source_url,
+      aliases: aliases()
+    ]
+  end
+
+  defp aliases do
+    [
+      "hex.publish": ["cmd cp ../../../README.md", "hex.publish"],
+      "hex.build": ["cmd cp ../../../README.md", "hex.build"]
     ]
   end
 
@@ -64,8 +72,22 @@ defmodule LiveReactIslands.MixProject do
       main: "readme",
       source_ref: "v#{@version}",
       source_url: @source_url,
-      extras: ["../../../README.md"],
-      assets: %{"../../../docs" => "docs"}
+      extras: [
+        "../../../README.md": [title: "Overview"],
+        "../../../docs/SSR.md": [title: "SSR"]
+      ],
+      assets: %{"../../../docs" => "docs"},
+      groups_for_modules: [
+        Core: [
+          LiveReactIslands,
+          LiveReactIslands.Application
+        ],
+        Components: [
+          LiveReactIslands.LiveView,
+          LiveReactIslands.Component,
+          LiveReactIslands.SSR
+        ]
+      ]
     ]
   end
 end

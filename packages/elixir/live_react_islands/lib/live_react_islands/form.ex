@@ -3,6 +3,8 @@ if Code.ensure_loaded?(Ecto.Changeset) do
     @moduledoc """
     Helpers for using Phoenix changesets with React islands.
     Only available when Ecto is installed.
+
+    Note: You don't need to use this module directly, instead use `init_form/3` and `update_form/3` included with LiveReactIslands.Component.
     """
 
     @doc """

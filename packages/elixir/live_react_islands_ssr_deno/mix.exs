@@ -28,7 +28,7 @@ defmodule LiveReactIslands.SSR.Deno.MixProject do
 
   defp deps do
     [
-      {:live_react_islands, path: "../live_react_islands"},
+      {:live_react_islands, "~> 0.1"},
       {:deno_rider, "~> 0.2"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false}
@@ -45,7 +45,7 @@ defmodule LiveReactIslands.SSR.Deno.MixProject do
   defp package do
     [
       name: "live_react_islands_ssr_deno",
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE),
+      files: ~w(lib mix.exs README.md LICENSE),
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url

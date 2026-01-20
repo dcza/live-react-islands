@@ -30,7 +30,6 @@ defmodule LiveReactIslands.SSR.Renderer do
 
   @doc """
   Optionally preload a component for faster rendering.
-  Default implementation does nothing.
   """
   @callback preload_component(component_name :: String.t()) :: :ok
 

@@ -55,3 +55,7 @@ tmp/
 temp/
 *.tmp
 
+# README copied from root
+packages/elixir/live_react_islands/README.md
+packages/js/core/README.md
+packages/js/vite-plugin-ssr/README.md

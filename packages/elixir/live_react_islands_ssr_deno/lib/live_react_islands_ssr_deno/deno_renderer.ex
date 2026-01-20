@@ -10,9 +10,8 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   require Logger
 
   @default_timeout 5000
-  @component_cache_ttl :timer.minutes(10)
 
-  defstruct [:deno_instance, :component_cache, :cache_cleanup_timer]
+  defstruct [:deno_instance]
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -20,21 +19,13 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
 
   @impl true
   def render_component(component_name, id, props, global_state, strategy) do
+    timeout = Application.get_env(:live_react_islands_ssr_deno, :timeout, @default_timeout)
+
     GenServer.call(
       __MODULE__,
       {:render_component, component_name, id, props, global_state, strategy},
-      @default_timeout
+      timeout
     )
-  end
-
-  @impl true
-  def preload_component(component_name) do
-    GenServer.cast(__MODULE__, {:preload_component, component_name})
-  end
-
-  @impl true
-  def clear_cache do
-    GenServer.call(__MODULE__, :clear_cache)
   end
 
   @impl true
@@ -46,17 +37,9 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   def init(opts) do
     main_module_path = Keyword.fetch!(opts, :main_module_path)
 
-    # Initialize DenoRider instance
     case DenoRider.start(main_module_path: main_module_path) do
       {:ok, deno_instance} ->
-        # Setup React SSR environment
-
-        state = %__MODULE__{
-          deno_instance: deno_instance,
-          component_cache: %{},
-          cache_cleanup_timer: Process.send_after(self(), :cleanup_cache, @component_cache_ttl)
-        }
-
+        state = %__MODULE__{deno_instance: deno_instance}
         Logger.info("ReactSSRServer started successfully with module: #{main_module_path}")
         {:ok, state}
 
@@ -100,35 +83,13 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   end
 
   @impl true
-  def handle_call(:clear_cache, _from, state) do
-    new_state = %{state | component_cache: %{}}
-    {:reply, :ok, new_state}
-  end
-
-  @impl true
   def handle_call(:get_stats, _from, state) do
-    stats = %{
-      cache_size: map_size(state.component_cache),
-      deno_instance: state.deno_instance != nil
-    }
-
+    stats = %{deno_instance: state.deno_instance != nil}
     {:reply, stats, state}
   end
 
   @impl true
-  def handle_info(:cleanup_cache, state) do
-    # Simple cache cleanup - in production you might want more sophisticated LRU
-    new_state = %{state | component_cache: %{}}
-    timer = Process.send_after(self(), :cleanup_cache, @component_cache_ttl)
-    {:noreply, %{new_state | cache_cleanup_timer: timer}}
-  end
-
-  @impl true
   def terminate(reason, state) do
-    if state.cache_cleanup_timer do
-      Process.cancel_timer(state.cache_cleanup_timer)
-    end
-
     if state.deno_instance do
       DenoRider.stop()
     end

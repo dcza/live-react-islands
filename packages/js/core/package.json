@@ -24,7 +24,8 @@
     "build": "rollup -c",
     "dev": "rollup -c -w",
     "test": "jest",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "cp ../../../README.md ./"
   },
   "keywords": [
     "phoenix",

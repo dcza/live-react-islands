@@ -47,18 +47,6 @@ defmodule LiveReactIslands.SSR.ViteRenderer do
   end
 
   @impl true
-  def preload_component(_component_name) do
-    # Vite handles module loading and HMR, no preloading needed
-    :ok
-  end
-
-  @impl true
-  def clear_cache do
-    # Vite handles its own module caching and invalidation
-    :ok
-  end
-
-  @impl true
   def get_stats do
     GenServer.call(__MODULE__, :get_stats)
   end

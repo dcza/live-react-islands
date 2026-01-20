@@ -48,7 +48,12 @@ use LiveReactIslands.Component,
 import { liveReactIslandsSSR } from "@live-react-islands/vite-plugin-ssr";
 
 export default {
-  plugins: [liveReactIslandsSSR({ ssrEntry: "./src/ssr.js" })],
+  server: {
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
+  },
+  plugins: [react(), liveReactIslandsSSR({ ssrEntry: "./src/ssr.js" })],
 };
 ```
 
@@ -168,7 +173,7 @@ globalThis.SSR_MODULE = {
 }
 ```
 
-The built-in `DenoRenderer` uses [DenoRider](https://github.com/akoutmos/deno_rider) to spawn a Deno process that loads your SSR bundle and calls `SSR_MODULE.renderSSRIsland()` for each render request.
+The built-in `DenoRenderer` uses [DenoRider](https://github.com/aglundahl/deno_rider) to spawn a Deno process that loads your SSR bundle and calls `SSR_MODULE.renderSSRIsland()` for each render request.
 
 ## Static Templates
 
