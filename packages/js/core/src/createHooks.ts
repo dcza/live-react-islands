@@ -17,6 +17,9 @@ import {
 
 interface LiveViewHook {
   el: HTMLElement;
+  liveSocket: {
+    on: (event: string, callback: (e: Event) => void) => void;
+  };
   pushEvent: (
     event: string,
     payload: any,
@@ -112,6 +115,7 @@ export function createHooks({
 
   let globalsRequested = false;
   const pendingMounts = new Set<string>();
+  let navigationListenerAttached = false;
 
   const Hook: Partial<LiveViewHook> & {
     mounted: (this: LiveViewHook) => void;
@@ -123,6 +127,14 @@ export function createHooks({
       if (!this.el.id) {
         console.error(`[LiveReactIslands] Island element missing unique id`);
         return;
+      }
+
+      if (!navigationListenerAttached) {
+        navigationListenerAttached = true;
+        this.liveSocket.on("phx:page-loading-start", () => {
+          globalsRequested = false;
+          managerState = manager.resetGlobals(managerState);
+        });
       }
 
       // Pull globals once on first island mount

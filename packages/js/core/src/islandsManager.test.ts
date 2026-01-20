@@ -14,6 +14,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  document.body.innerHTML = "";
   jest.restoreAllMocks();
 });
 
@@ -21,9 +22,7 @@ describe("IslandsManager.initialize", () => {
   let mockRoot: any;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
     jest.clearAllMocks();
-
     mockRoot = { render: jest.fn() };
     (ReactDOM.createRoot as jest.Mock).mockReturnValue(mockRoot);
   });
@@ -125,7 +124,6 @@ describe("IslandsManager.mountIsland", () => {
   };
 
   beforeEach(() => {
-    document.body.innerHTML = "";
     jest.clearAllMocks();
   });
 
@@ -256,9 +254,7 @@ describe("IslandsManager.updateIslandProps", () => {
   let storeAccess: any;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
     jest.clearAllMocks();
-
     const mockRoot = { render: jest.fn() };
     (ReactDOM.createRoot as jest.Mock).mockReturnValue(mockRoot);
 
@@ -303,9 +299,7 @@ describe("IslandsManager.updateGlobals", () => {
   let storeAccess: any;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
     jest.clearAllMocks();
-
     const mockRoot = { render: jest.fn() };
     (ReactDOM.createRoot as jest.Mock).mockReturnValue(mockRoot);
 
@@ -349,6 +343,41 @@ describe("IslandsManager.updateGlobals", () => {
   });
 });
 
+describe("IslandsManager.resetGlobals", () => {
+  let state: any;
+  let storeAccess: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const mockRoot = { render: jest.fn() };
+    (ReactDOM.createRoot as jest.Mock).mockReturnValue(mockRoot);
+
+    state = IslandsManager.initialize({});
+    const renderCall = mockRoot.render.mock.calls[0][0];
+    storeAccess = renderCall.props.children.props.children.props.storeAccess;
+  });
+
+  test("clears globals via storeAccess.getGlobals", () => {
+    const globals = { user: "test", theme: "dark", __version: 5 };
+    IslandsManager.updateGlobals(state, globals);
+    expect(storeAccess.getGlobals()).toEqual(globals);
+
+    IslandsManager.resetGlobals(state);
+    expect(storeAccess.getGlobals()).toBeNull();
+  });
+
+  test("allows new globals with lower version after reset", () => {
+    const globals1 = { user: "test1", __version: 5 };
+    IslandsManager.updateGlobals(state, globals1);
+
+    IslandsManager.resetGlobals(state);
+
+    const globals2 = { user: "test2", __version: 0 };
+    IslandsManager.updateGlobals(state, globals2);
+    expect(storeAccess.getGlobals()).toEqual(globals2);
+  });
+});
+
 describe("IslandsManager.unmountIsland", () => {
   const createMockIslandData = (overrides?: Partial<IslandData>): IslandData => {
     const el = document.createElement("div");
@@ -368,7 +397,6 @@ describe("IslandsManager.unmountIsland", () => {
   };
 
   beforeEach(() => {
-    document.body.innerHTML = "";
     jest.clearAllMocks();
   });
 

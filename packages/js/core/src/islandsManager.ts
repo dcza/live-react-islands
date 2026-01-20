@@ -55,6 +55,7 @@ export interface Manager {
     state: ManagerState,
     globals: Record<string, any>
   ) => ManagerState;
+  resetGlobals: (state: ManagerState) => ManagerState;
   initializeStream: (
     state: ManagerState,
     islandId: string,
@@ -306,6 +307,10 @@ const ManagerObj: Manager = {
       state.globalsListeners.forEach((cb) => cb());
     }
 
+    return state;
+  },
+  resetGlobals: (state) => {
+    state.globalsRef.current = null;
     return state;
   },
   initializeStream: (state, islandId, streamName, initialItems) => {

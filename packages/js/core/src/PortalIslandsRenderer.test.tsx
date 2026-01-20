@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor, act } from "@testing-library/react";
+import { render, waitFor, act, cleanup } from "@testing-library/react";
 import { PortalIslandsRenderer } from "./PortalIslandsRenderer";
 import type {
   IslandData,
@@ -8,10 +8,11 @@ import type {
 
 beforeEach(() => {
   jest.spyOn(console, "log").mockImplementation(() => {});
-  document.body.innerHTML = "";
 });
 
 afterEach(() => {
+  cleanup();
+  document.body.innerHTML = "";
   jest.restoreAllMocks();
 });
 
