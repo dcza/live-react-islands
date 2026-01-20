@@ -427,7 +427,7 @@ use LiveReactIslands.Component,
 
 > ⚠️ SSR is optional. Many islands work perfectly without it. Enable SSR when initial paint, SEO, or perceived performance matter.
 
-See the **[SSR Guide](https://raw.githubusercontent.com/dcza/live-react-islands/main/docs/SSR.md)** for complete setup instructions, caching strategies, and custom renderer implementation.
+See the **[SSR Guide](https://github.com/dcza/live-react-islands/blob/main/docs/SSR.md)** for complete setup instructions, caching strategies, and custom renderer implementation.
 
 ## Requirements
 
@@ -448,8 +448,8 @@ mix phx.server  # in another terminal
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://raw.githubusercontent.com/dcza/live-react-islands/main/CONTRIBUTING.md) for development setup and guidelines.
+See [CONTRIBUTING.md](https://github.com/dcza/live-react-islands/blob/main/CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
-MIT License - see [LICENSE](https://raw.githubusercontent.com/dcza/live-react-islands/main/LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/dcza/live-react-islands/blob/main/LICENSE) for details.
