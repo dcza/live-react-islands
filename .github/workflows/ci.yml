@@ -34,12 +34,14 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - run: |
-          yarn --version
-          node --version
-          yarn config list | grep -E 'compression|globalCache|nodeLinker|architectures'
-          ls -la .yarn/cache | wc -l || echo "Cache empty?"
-          yarn install --immutable --check-cache --refresh-lockfile || true
-          git diff yarn.lock | head -n 30 || echo "No diff"
+          yarn --version || true
+          corepack --version || true
+          node --version || true
+          yarn config get compressionLevel || true
+          yarn config get nodeLinker || true
+          yarn config get enableGlobalCache || true
+          yarn config get supportedArchitectures || true
+          grep -r "packageManager" package.json packages/*/package.json 2>/dev/null || echo "No packageManager fields found"
 
       - run: yarn build:js
       - run: yarn test:js
