@@ -19,7 +19,7 @@ jobs:
       - name: Enable Corepack
         run: |
           corepack enable
-          corepack prepare yarn@4.2.2 --activate
+          corepack prepare yarn@4.12.0 --activate
 
       - name: Get Yarn Cache Path
         id: yarn-cache
@@ -45,9 +45,7 @@ jobs:
         with:
           otp-version: "27"
           elixir-version: "1.18"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-      - run: corepack enable
-      - run: corepack prepare yarn@4.2.2 --activate
-      - run: yarn test:elixir
+      - run: mix deps.get
+        working-directory: packages/elixir/live_react_islands
+      - run: mix test
+        working-directory: packages/elixir/live_react_islands
