@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "yarn build:js && yarn build:elixir",
-    "build:js": "yarn workspaces foreach -A --topo --exclude live-react-islands run build",
+    "build:js": "yarn workspaces foreach -At --exclude live-react-islands run build",
     "build:elixir": "cd packages/elixir/live_react_islands && mix compile",
     "test": "yarn test:js && yarn test:elixir",
     "test:js": "yarn workspaces foreach -A --exclude live-react-islands run test",
