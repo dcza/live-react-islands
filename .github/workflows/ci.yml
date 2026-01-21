@@ -32,8 +32,8 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
-      - run: yarn install --mode=update-lockfile || true
-      - run: git diff yarn.lock || echo "No changes detected"
+
+      - run: yarn install --immutable
       - run: yarn build:js
       - run: yarn test:js
 
