@@ -33,7 +33,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
-      - run: yarn install --immutable
+      - run: |
+        yarn --version
+        node --version
+        yarn config list | grep -E 'compression|globalCache|nodeLinker|architectures'
+        ls -la .yarn/cache | wc -l || echo "Cache empty?"
+        yarn install --immutable --check-cache --refresh-lockfile || true
+        git diff yarn.lock | head -n 30 || echo "No diff"
+
+
       - run: yarn build:js
       - run: yarn test:js
 
