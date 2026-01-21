@@ -14,12 +14,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-          corepack: true
           cache: "yarn"
       - run: corepack enable
-      - run: corepack yarn install --immutable
-      - run: corepack yarn build:js
-      - run: corepack yarn test:js
+      - run: corepack prepare yarn@4.2.2 --activate
+      - run: yarn install --immutable
+      - run: yarn build:js
+      - run: yarn test:js
 
   test-elixir:
     runs-on: ubuntu-latest
@@ -32,5 +32,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-          corepack: true
-      - run: corepack yarn test:elixir
+      - run: corepack enable
+      - run: corepack prepare yarn@4.2.2 --activate
+      - run: yarn test:elixir
