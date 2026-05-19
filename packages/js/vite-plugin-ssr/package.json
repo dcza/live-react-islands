@@ -1,6 +1,6 @@
 {
   "name": "@live-react-islands/vite-plugin-ssr",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vite plugin for LiveReactIslands SSR development server",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
