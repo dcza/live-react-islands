@@ -1,0 +1,32 @@
+name: Publish NPM Packages
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn build:js
+      - run: yarn test:js
+
+      - name: Publish @live-react-islands/core
+        run: npm publish --access public --provenance
+        working-directory: packages/js/core
+
+      - name: Publish @live-react-islands/vite-plugin-ssr
+        run: npm publish --access public --provenance
+        working-directory: packages/js/vite-plugin-ssr

@@ -1,0 +1,40 @@
+name: Publish Hex Packages
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: hex
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          elixir-version: "1.18"
+
+      - name: Publish live_react_islands
+        working-directory: packages/elixir/live_react_islands
+        run: |
+          mix deps.get
+          mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+
+      - name: Publish live_react_islands_ssr_vite
+        working-directory: packages/elixir/live_react_islands_ssr_vite
+        run: |
+          mix deps.get
+          mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+
+      - name: Publish live_react_islands_ssr_deno
+        working-directory: packages/elixir/live_react_islands_ssr_deno
+        run: |
+          mix deps.get
+          mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}

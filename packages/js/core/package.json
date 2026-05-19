@@ -7,10 +7,12 @@
   "module": "dist/index.esm.js",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js"
     },
     "./ssr": {
+      "types": "./dist/ssr.d.ts",
       "import": "./dist/ssr.esm.js",
       "require": "./dist/ssr.js"
     }
