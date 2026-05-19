@@ -251,7 +251,7 @@ export function createHooks({
         const islandConfig = await resolveIslandConfig(
           islandsMap,
           componentName,
-          SharedContextProvider
+          NullContextProvider
         );
 
         if (!pendingMounts.has(elId)) return;
