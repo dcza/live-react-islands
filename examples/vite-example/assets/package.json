@@ -11,17 +11,17 @@
   },
   "dependencies": {
     "@live-react-islands/core": "workspace:*",
-    "phoenix": "^1.7.18",
-    "phoenix_html": "^4.1.1",
-    "phoenix_live_view": "1.0.18",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "phoenix": "^1.8.13",
+    "phoenix_html": "^4.3.0",
+    "phoenix_live_view": "1.2.11",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@live-react-islands/vite-plugin-ssr": "workspace:*",
-    "@tailwindcss/vite": "^4.1.15",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
     "tailwindcss": "^4",
-    "vite": "^6.0.7"
+    "vite": "^8.2.2"
   }
 }

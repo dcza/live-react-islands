@@ -18,7 +18,10 @@ import {
 interface LiveViewHook {
   el: HTMLElement;
   liveSocket: {
-    on: (event: string, callback: (e: Event) => void) => void;
+    on: (
+      event: string,
+      callback: (e: CustomEvent<{ kind: string }>) => void
+    ) => void;
   };
   pushEvent: (
     event: string,
@@ -131,7 +134,13 @@ export function createHooks({
 
       if (!navigationListenerAttached) {
         navigationListenerAttached = true;
-        this.liveSocket.on("phx:page-loading-start", () => {
+        this.liveSocket.on("phx:page-loading-start", (e) => {
+          // Patches (e.g. push_patch tab switches) stay within the same
+          // LiveView mount and globals version counter, so islands that
+          // remain mounted through the patch must keep their cached
+          // globals. Only a real navigation (new mount, version resets
+          // to 0 server-side) needs the stale client-side version cleared.
+          if (e.detail?.kind === "patch") return;
           globalsRequested = false;
           managerState = manager.resetGlobals(managerState);
         });

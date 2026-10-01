@@ -63,7 +63,7 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
       end
 
     render_script = """
-      SSR_MODULE.renderSSRIsland(
+      globalThis.SSR_MODULE.renderSSRIsland(
         #{Jason.encode!(component_name)},
         #{Jason.encode!(id)},
         #{Jason.encode!(props)},

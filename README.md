@@ -441,9 +441,8 @@ See the **[SSR Guide](https://github.com/dcza/live-react-islands/blob/main/docs/
 ```bash
 cd examples/vite-example
 mix deps.get
-yarn install
-yarn dev
-mix phx.server  # in another terminal
+cd assets && yarn install && yarn dev  # in one terminal
+cd .. && mix phx.server                # in another terminal
 ```
 
 ## Contributing

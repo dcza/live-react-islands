@@ -4,7 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import liveReactIslandsSSR from "@live-react-islands/vite-plugin-ssr";
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/assets/" : "/",
   plugins: [
     react(),
     tailwindcss(),
@@ -19,7 +20,7 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
-    outDir: "./priv/static/assets",
+    outDir: "../priv/static/assets",
     emptyOutDir: true,
     manifest: false,
     rollupOptions: {
@@ -44,4 +45,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
