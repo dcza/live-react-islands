@@ -10,11 +10,19 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   require Logger
 
   @default_timeout 5000
+  @default_startup_timeout 30_000
 
   defstruct [:deno_instance]
 
   def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+    startup_timeout =
+      Application.get_env(
+        :live_react_islands_ssr_deno,
+        :startup_timeout,
+        @default_startup_timeout
+      )
+
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__, timeout: startup_timeout)
   end
 
   @impl true
@@ -37,11 +45,31 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   def init(opts) do
     main_module_path = Keyword.fetch!(opts, :main_module_path)
 
-    case DenoRider.start(main_module_path: main_module_path) do
+    startup_timeout =
+      Application.get_env(
+        :live_react_islands_ssr_deno,
+        :startup_timeout,
+        @default_startup_timeout
+      )
+
+    module_url = %URI{scheme: "file", path: Path.expand(main_module_path)} |> URI.to_string()
+
+    case DenoRider.start() do
       {:ok, deno_instance} ->
-        state = %__MODULE__{deno_instance: deno_instance}
-        Logger.info("ReactSSRServer started successfully with module: #{main_module_path}")
-        {:ok, state}
+        case DenoRider.eval("import(#{Jason.encode!(module_url)})",
+               pid: deno_instance,
+               timeout: startup_timeout
+             ) do
+          {:ok, _module} ->
+            state = %__MODULE__{deno_instance: deno_instance}
+            Logger.info("ReactSSRServer started successfully with module: #{main_module_path}")
+            {:ok, state}
+
+          {:error, reason} ->
+            DenoRider.stop(pid: deno_instance)
+            Logger.error("Failed to load SSR module: #{inspect(reason)}")
+            {:stop, reason}
+        end
 
       {:error, reason} ->
         Logger.error("Failed to start DenoRider: #{inspect(reason)}")
@@ -91,7 +119,7 @@ defmodule LiveReactIslands.SSR.DenoRenderer do
   @impl true
   def terminate(reason, state) do
     if state.deno_instance do
-      DenoRider.stop()
+      DenoRider.stop(pid: state.deno_instance)
     end
 
     Logger.info("DenoRenderer terminated: #{inspect(reason)}")

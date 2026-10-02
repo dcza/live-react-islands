@@ -9,4 +9,5 @@ config :live_react_islands,
 
 config :live_react_islands_ssr_deno,
   otp_app: :vite_example,
-  main_module_path: "priv/static/assets/ssr.js"
+  main_module_path: "priv/static/assets/ssr.js",
+  startup_timeout: 30_000

@@ -13,6 +13,29 @@ export default defineConfig(({ command }) => ({
       ssrEntry: "./src/ssr.js",
     }),
   ],
+  builder: {},
+  environments: {
+    ssr: {
+      build: {
+        ssr: "./src/ssr.js",
+        target: "esnext",
+        outDir: "../priv/static/assets",
+        emptyOutDir: false,
+        rollupOptions: {
+          input: "./src/ssr.js",
+          output: {
+            codeSplitting: true,
+            manualChunks(id) {
+              if (id.includes("node_modules")) return "ssr-vendor";
+            },
+            entryFileNames: "ssr.js",
+            chunkFileNames: "[name]-[hash].js",
+            assetFileNames: "[name]-[hash].[ext]",
+          },
+        },
+      },
+    },
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,
@@ -24,17 +47,10 @@ export default defineConfig(({ command }) => ({
     emptyOutDir: true,
     manifest: false,
     rollupOptions: {
-      input: {
-        // Client side bundle added to the phoenix root layout
-        main: "./src/main.jsx",
-        // Server side rendering bundle
-        ssr: "./src/ssr.js",
-      },
+      input: { main: "./src/main.jsx" },
       output: {
-        // Only main.js/css and ssr.js are static
         entryFileNames(chunk) {
           if (chunk.name === "main") return "main.js";
-          if (chunk.name === "ssr") return "ssr.js";
           return "[name]-[hash].js";
         },
         chunkFileNames: "[name]-[hash].js",
@@ -44,5 +60,9 @@ export default defineConfig(({ command }) => ({
         },
       },
     },
+  },
+  ssr: {
+    target: "webworker",
+    noExternal: true,
   },
 }));
